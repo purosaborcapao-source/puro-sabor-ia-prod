@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(pnpm build:*)",
+      "Bash(timeout 10 pnpm dev)",
+      "mcp__594be90d-0f5e-41b9-ac83-b65a624801c5__generate_typescript_types",
+      "Bash(pnpm add:*)",
+      "Bash(ls -la \"/Users/jeanbrusch/Puro Sabor IA\"/.env*)",
+      "Bash(lsof -ti:3000,3001)",
+      "Bash(xargs kill:*)",
+      "mcp__594be90d-0f5e-41b9-ac83-b65a624801c5__list_migrations",
+      "mcp__594be90d-0f5e-41b9-ac83-b65a624801c5__get_logs",
+      "Bash(lsof -ti:3001)",
+      "Bash(npm run:*)",
+      "Bash(timeout 15 pnpm dev)",
+      "Bash(pnpm dev:*)",
+      "Bash(xargs ls:*)"
+    ]
+  }
+}
