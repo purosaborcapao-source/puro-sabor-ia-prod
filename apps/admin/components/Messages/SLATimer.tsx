@@ -19,6 +19,7 @@ export const SLATimer: React.FC<SLATimerProps> = ({
     }
 
     const calculateSLA = () => {
+      if (!lastInboundAt) return;
       const date = new Date(lastInboundAt);
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();

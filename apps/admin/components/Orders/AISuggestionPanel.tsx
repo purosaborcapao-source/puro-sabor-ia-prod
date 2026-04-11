@@ -95,7 +95,7 @@ export function AISuggestionPanel({ orderId, onSuggestionApplied }: AISuggestion
               <div className="grid grid-cols-2 gap-2 text-[10px] uppercase font-black tracking-tight text-purple-700 dark:text-purple-400">
                 {s.suggestion_data.delivery_date && (
                   <div className="flex items-center gap-1">
-                    <span className="opacity-50">NOVA DATA:</span> {new Date(s.suggestion_data.delivery_date).toLocaleDateString('pt-BR')}
+                    <span className="opacity-50">NOVA DATA:</span> {new Date(s.suggestion_data.delivery_date!).toLocaleDateString('pt-BR')}
                   </div>
                 )}
                 {s.suggestion_data.suggested_total && (

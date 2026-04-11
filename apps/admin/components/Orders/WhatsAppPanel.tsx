@@ -454,7 +454,7 @@ function MessageBubble({
       {/* Timestamp + status */}
       <div className="flex items-center gap-1.5">
         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-          {message.created_at ? new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+          {message.created_at ? new Date(message.created_at!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
         </span>
         {!isIncoming && (
           <CheckCheck

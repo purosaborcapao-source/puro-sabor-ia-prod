@@ -19,7 +19,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const payload = message.payload as any;
   const intent = payload?.intent;
 
-  const formatTime = (dateString: string) => {
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return "";
     const date = new Date(dateString);
     return date.toLocaleTimeString("pt-BR", {
       hour: "2-digit",

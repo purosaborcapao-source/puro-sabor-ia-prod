@@ -211,7 +211,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
               </div>
               {order.created_at && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Criado em {new Date(order.created_at).toLocaleDateString('pt-BR')}
+                  Criado em {new Date(order.created_at!).toLocaleDateString('pt-BR')}
                 </p>
               )}
             </div>
@@ -236,7 +236,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Data de Entrega</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {new Date(order.delivery_date).toLocaleDateString('pt-BR')} - {order.delivery_type}
+                    {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('pt-BR') : 'N/A'} - {order.delivery_type}
                   </p>
                 </div>
                 <div>
