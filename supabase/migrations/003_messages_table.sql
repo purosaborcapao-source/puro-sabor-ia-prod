@@ -1,3 +1,4 @@
+-- DESATUALIZADO: Esta migration reflete o design inicial. O DB atual usa INBOUND/OUTBOUND em vez de INCOMING/OUTGOING e a coluna message_ref.
 -- Criar tipo ENUM para message_direction se não existir
 DO $$ BEGIN
   CREATE TYPE public.message_direction AS ENUM ('INCOMING', 'OUTGOING');

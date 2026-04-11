@@ -66,7 +66,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
   const loadMessages = async () => {
     try {
-      setLoading(true);
+      // Silent refresh: só mostra loading se não houver mensagens
+      if (messages.length === 0) {
+        setLoading(true);
+      }
       setError(null);
 
       // Buscar customer
@@ -129,8 +132,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         throw new Error(data.error || "Falha ao enviar via API");
       }
 
-      // Recarregar mensagens (o realtime também pegará a inserção)
-      await loadMessages();
+      // O realtime já pegará a inserção e atualizará a lista
     } catch (err) {
       console.error("❌ Erro ao enviar resposta:", err);
       setError(

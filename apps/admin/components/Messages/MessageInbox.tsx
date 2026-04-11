@@ -47,8 +47,9 @@ export const MessageInbox = React.memo(function MessageInbox() {
         throw err;
       }
 
-      // Agrupar por customer_id e pegar último
+      // Agrupar por customer_id e calcular unread_count (INBOUNDs desde o último OUTBOUND)
       const chatMap = new Map<string, MessageChat>();
+      const hasSeenOutbound = new Set<string>();
 
       data?.forEach((msg: any) => {
         const customerId = msg.customer_id;
@@ -59,13 +60,21 @@ export const MessageInbox = React.memo(function MessageInbox() {
             customer_name: msg.customers?.name || "Desconhecido",
             last_message: msg.content,
             last_message_time: msg.created_at,
-            unread_count: msg.direction === "INBOUND" ? 1 : 0,
+            unread_count: 0,
             direction: msg.direction,
           });
-        } else {
-          const chat = chatMap.get(customerId)!;
+        }
+
+        const chat = chatMap.get(customerId)!;
+
+        // Como as mensagens vêm do mais RECENTE para o mais ANTIGO:
+        // Se ainda não vimos um OUTBOUND, as mensagens INBOUND são "não lidas".
+        // Assim que vemos a primeira OUTBOUND (a mais recente), paramos de contar.
+        if (!hasSeenOutbound.has(customerId)) {
           if (msg.direction === "INBOUND") {
             chat.unread_count += 1;
+          } else {
+            hasSeenOutbound.add(customerId);
           }
         }
       });

@@ -1,21 +1,28 @@
 import React, { useState } from 'react'
 import { Check, AlertCircle } from 'lucide-react'
+import { supabase } from '@atendimento-ia/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface ConfirmPaymentButtonProps {
   paymentEntryId: string
-  paymentType: 'SINAL' | 'SALDO' | 'PARCIAL'
+  orderId: string
+  orderTotal: number
+  paymentType: 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO'
   paymentAmount: number
   onSuccess?: () => void
   disabled?: boolean
 }
 
 export function ConfirmPaymentButton({
-  paymentEntryId: _paymentEntryId,
+  paymentEntryId,
+  orderId,
+  orderTotal,
   paymentType,
   paymentAmount,
   onSuccess,
   disabled = false
 }: ConfirmPaymentButtonProps) {
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
@@ -25,9 +32,52 @@ export function ConfirmPaymentButton({
       setError(null)
       setIsLoading(true)
 
-      // TODO: Implementar quando as tabelas payment_entries forem criadas em FASE 2.1
-      // Por enquanto, simular sucesso
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      console.log('💰 Confirmando pagamento:', { paymentEntryId, orderId, paymentAmount })
+
+      // 1. Atualizar a entrada de pagamento
+      const { error: updateErr } = await supabase
+        .from('payment_entries')
+        .update({
+          status: 'CONFIRMADO',
+          confirmed_by: user?.id,
+          confirmed_at: new Date().toISOString()
+        })
+        .eq('id', paymentEntryId)
+
+      if (updateErr) throw updateErr
+
+      // 2. Buscar todos os pagamentos CONFIRMADOS para este pedido para recalcular o status
+      const { data: confirmedPayments, error: fetchErr } = await supabase
+        .from('payment_entries')
+        .select('valor')
+        .eq('order_id', orderId)
+        .eq('status', 'CONFIRMADO')
+
+      if (fetchErr) throw fetchErr
+
+      const totalConfirmed = (confirmedPayments || []).reduce((sum, p) => sum + (p.valor || 0), 0)
+      
+      // 3. Determinar novo status financeiro do pedido
+      // Se total >= total do pedido, QUITADO. Senão, se tem algum confirmado, SINAL_PAGO.
+      let newPaymentStatus = 'SINAL_PENDENTE'
+      if (totalConfirmed >= orderTotal) {
+        newPaymentStatus = 'QUITADO'
+      } else if (totalConfirmed > 0) {
+        newPaymentStatus = 'SINAL_PAGO'
+      }
+
+      const { error: orderUpdateErr } = await supabase
+        .from('orders')
+        .update({ 
+          payment_status: newPaymentStatus,
+          // Se for sinal, marcar explicitamente como confirmado (para compatibilidade legada)
+          ...(paymentType === 'SINAL' ? { sinal_confirmado: true } : {})
+        })
+        .eq('id', orderId)
+
+      if (orderUpdateErr) throw orderUpdateErr
+
+      console.log('✅ Pagamento confirmado e status do pedido atualizado para:', newPaymentStatus)
 
       // Success
       setShowConfirmation(false)
@@ -35,6 +85,7 @@ export function ConfirmPaymentButton({
         onSuccess()
       }
     } catch (err) {
+      console.error('❌ Erro ao confirmar pagamento:', err)
       const message = err instanceof Error ? err.message : 'Erro ao confirmar pagamento'
       setError(message)
     } finally {
@@ -43,6 +94,11 @@ export function ConfirmPaymentButton({
   }
 
   if (showConfirmation) {
+    const paymentLabel = 
+      paymentType === 'SINAL' ? 'sinal' : 
+      paymentType === 'PARCIAL' ? 'parcial' : 
+      paymentType === 'ANTECIPADO' ? 'antecipado' : 'saldo'
+
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
@@ -50,7 +106,7 @@ export function ConfirmPaymentButton({
             Confirmar Pagamento
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Confirmar {paymentType === 'SINAL' ? 'sinal' : paymentType === 'PARCIAL' ? 'parcial' : 'saldo'} no valor de{' '}
+            Confirmar {paymentLabel} no valor de{' '}
             <strong>
               {paymentAmount.toLocaleString('pt-BR', {
                 style: 'currency',

@@ -70,10 +70,10 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
         query = query.eq('status', filters.status as any)
       }
 
-      // TODO: Implementar quando os campos payment_status forem criados em FASE 2.1
-      // if (filters.paymentStatus) {
-      //   query = query.eq('payment_status', filters.paymentStatus as any)
-      // }
+      if (filters.paymentStatus) {
+        console.log('📌 Aplicando filtro financeiro:', filters.paymentStatus)
+        query = query.eq('payment_status', filters.paymentStatus as any)
+      }
 
       if (filters.date) {
         console.log('📌 Aplicando filtro de data:', filters.date)

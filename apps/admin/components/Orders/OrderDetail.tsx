@@ -30,7 +30,7 @@ interface Order {
 
 interface PaymentEntry {
   id: string;
-  payment_type: 'SINAL' | 'SALDO' | 'PARCIAL';
+  payment_type: 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO';
   amount: number;
   status: 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'REJEITADO';
   notes?: string;
@@ -107,7 +107,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       } else {
         const processedPayments: PaymentEntry[] = (paymentsData || []).map((p: any) => ({
           id: p.id,
-          payment_type: p.type as 'SINAL' | 'SALDO' | 'PARCIAL',
+          payment_type: p.type as 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO',
           amount: p.valor,
           status: p.status as 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'REJEITADO',
           notes: p.notes,
@@ -150,7 +150,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       setRefreshKey(prev => prev + 1);
     } catch (err) {
       console.error('Erro ao adicionar item:', err);
-      alert('Falha ao adicionar item.');
+      setError('Falha ao adicionar item.');
     }
   };
 
@@ -242,7 +242,9 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Status</p>
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800' : 
+                    order.status === 'CONFIRMADO' ? 'bg-blue-100 text-blue-800' :
+                    'bg-yellow-100 text-yellow-800'
                   }`}>
                     {order.status}
                   </span>
@@ -296,6 +298,8 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
                   </div>
                   <ConfirmPaymentButton
                     paymentEntryId={payment.id}
+                    orderId={orderId}
+                    orderTotal={order.total}
                     paymentType={payment.payment_type}
                     paymentAmount={payment.amount}
                     onSuccess={() => setRefreshKey(k => k + 1)}
