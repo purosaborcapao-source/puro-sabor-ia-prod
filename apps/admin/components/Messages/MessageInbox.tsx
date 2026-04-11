@@ -12,7 +12,7 @@ interface MessageChat {
   last_message: string;
   last_message_time: string;
   unread_count: number;
-  direction: "INCOMING" | "OUTGOING";
+  direction: "INBOUND" | "OUTBOUND";
 }
 
 export const MessageInbox = React.memo(function MessageInbox() {
@@ -59,12 +59,12 @@ export const MessageInbox = React.memo(function MessageInbox() {
             customer_name: msg.customers?.name || "Desconhecido",
             last_message: msg.content,
             last_message_time: msg.created_at,
-            unread_count: msg.direction === "INCOMING" ? 1 : 0,
+            unread_count: msg.direction === "INBOUND" ? 1 : 0,
             direction: msg.direction,
           });
         } else {
           const chat = chatMap.get(customerId)!;
-          if (msg.direction === "INCOMING") {
+          if (msg.direction === "INBOUND") {
             chat.unread_count += 1;
           }
         }

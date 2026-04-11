@@ -58,7 +58,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       .insert({
         customer_id: customer.id,
         phone: parsed.phone,
-        direction: "INCOMING",
+        direction: "INBOUND",
         type,
         content,
         media_url,
