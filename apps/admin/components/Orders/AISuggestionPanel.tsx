@@ -38,7 +38,7 @@ export function AISuggestionPanel({ orderId, onSuggestionApplied }: AISuggestion
         .eq('is_ai_suggestion' as any, true)
 
       if (error) throw error
-      setSuggestions(data || [])
+      setSuggestions((data as any) || [])
     } finally {
       setLoading(false)
     }
