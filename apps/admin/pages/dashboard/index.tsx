@@ -38,103 +38,105 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!profile) return
 
-    const loadPendenciasAndMetrics = async () => {
-      try {
-        // 1. Mensagens não respondidas (Simplificado para debug)
-        const { data: mensagens, error: msgErr } = await supabase
-          .from('messages')
-          .select('id')
-          .limit(10)
+  const loadPendenciasAndMetrics = useCallback(async () => {
+    try {
+      // 1. Mensagens não respondidas (Simplificado para debug)
+      const { data: mensagens, error: msgErr } = await supabase
+        .from('messages')
+        .select('id')
+        .limit(10)
 
-        if (msgErr) console.error('❌ Erro Mensagens:', msgErr)
+      if (msgErr) console.error('❌ Erro Mensagens:', msgErr)
 
-        // 2. Pedidos pendentes
-        const { data: pedidosPendentes } = await supabase
-          .from('orders')
-          .select('id')
-          .eq('status', 'PENDENTE')
+      // 2. Pedidos pendentes
+      const { data: pedidosPendentes } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('status', 'PENDENTE')
 
-        // 3. Sinais a receber (próx. 3 dias)
-        const threeDaysFromNow = new Date()
-        threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+      // 3. Sinais a receber (próx. 3 dias)
+      const threeDaysFromNow = new Date()
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
 
-        const { data: sinaisData } = await supabase
-          .from('orders')
-          .select('id')
-          .neq('payment_status', 'QUITADO')
-          .lte('delivery_date', threeDaysFromNow.toISOString().split('T')[0])
-          .gte('delivery_date', new Date().toISOString().split('T')[0])
+      const { data: sinaisData } = await supabase
+        .from('orders')
+        .select('id')
+        .neq('payment_status', 'QUITADO')
+        .lte('delivery_date', threeDaysFromNow.toISOString().split('T')[0])
+        .gte('delivery_date', new Date().toISOString().split('T')[0])
 
-        const sinaisAReceber = sinaisData || []
+      const sinaisAReceber = sinaisData || []
 
-        // 4. Alterações solicitadas (não processadas)
-        const { data: changesData } = await supabase
-          .from('order_changes')
-          .select('id')
-          .limit(10) // Mock por enquanto, mas tabela existe
+      // 4. Alterações solicitadas (não processadas)
+      const { data: changesData } = await supabase
+        .from('order_changes')
+        .select('id')
+        .limit(10) // Mock por enquanto, mas tabela existe
 
-        const alteracoes = changesData || []
+      const alteracoes = changesData || []
 
-        // 5. Pagamentos aguardando confirmação
-        const { data: pagamentosData } = await supabase
-          .from('payment_entries')
-          .select('id')
-          .eq('status', 'AGUARDANDO_CONFIRMACAO')
+      // 5. Pagamentos aguardando confirmação
+      const { data: pagamentosData } = await supabase
+        .from('payment_entries')
+        .select('id')
+        .eq('status', 'AGUARDANDO_CONFIRMACAO')
 
-        const pagamentosAguardando = pagamentosData || []
+      const pagamentosAguardando = pagamentosData || []
 
-        // Atualizar pendências
-        const updatedPendencias = basePendencias.map((p) => {
-          if (p.type === 'mensagens') return { ...p, count: mensagens?.length || 0 }
-          if (p.type === 'pedidos') return { ...p, count: pedidosPendentes?.length || 0 }
-          if (p.type === 'sinais') return { ...p, count: sinaisAReceber?.length || 0 }
-          if (p.type === 'alteracoes') return { ...p, count: alteracoes?.length || 0 }
-          if (p.type === 'pagamentos') return { ...p, count: pagamentosAguardando.length }
-          return p
-        })
-        setPendencias(updatedPendencias)
+      // Atualizar pendências
+      const updatedPendencias = basePendencias.map((p) => {
+        if (p.type === 'mensagens') return { ...p, count: mensagens?.length || 0 }
+        if (p.type === 'pedidos') return { ...p, count: pedidosPendentes?.length || 0 }
+        if (p.type === 'sinais') return { ...p, count: sinaisAReceber?.length || 0 }
+        if (p.type === 'alteracoes') return { ...p, count: alteracoes?.length || 0 }
+        if (p.type === 'pagamentos') return { ...p, count: pagamentosAguardando.length }
+        return p
+      })
+      setPendencias(updatedPendencias)
 
-        // Números do dia
-        const todayStr = new Date().toISOString().split('T')[0]
+      // Números do dia
+      const todayStr = new Date().toISOString().split('T')[0]
 
-        // a. Pedidos de hoje (Volume Operacional)
-        const { data: todayOrders } = await supabase
-          .from('orders')
-          .select('total, payment_status')
-          .eq('delivery_date', todayStr)
+      // a. Pedidos de hoje (Volume Operacional)
+      const { data: todayOrders } = await supabase
+        .from('orders')
+        .select('total, payment_status')
+        .eq('delivery_date', todayStr)
 
-        // b. Recebido hoje (Fluxo de Caixa)
-        // Somar pagamentos confirmados com 'confirmed_at' hoje
-        const { data: todayPayments } = await supabase
-          .from('payment_entries')
-          .select('valor')
-          .eq('status', 'CONFIRMADO')
-          .gte('confirmed_at', todayStr + 'T00:00:00')
-          .lte('confirmed_at', todayStr + 'T23:59:59')
+      // b. Recebido hoje (Fluxo de Caixa)
+      // Somar pagamentos confirmados com 'confirmed_at' hoje
+      const { data: todayPayments } = await supabase
+        .from('payment_entries')
+        .select('valor')
+        .eq('status', 'CONFIRMADO')
+        .gte('confirmed_at', todayStr + 'T00:00:00')
+        .lte('confirmed_at', todayStr + 'T23:59:59')
 
-        const deliveryCount = todayOrders?.length || 0
-        const totalVolume = todayOrders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
-        const totalReceived = todayPayments?.reduce((sum, p) => sum + (p.valor || 0), 0) || 0
-        
-        // A receber hoje (Saldo dos pedidos de hoje)
-        // Isso é complexo se não tivermos o total confirmado por pedido, 
-        // mas vamos aproximar ou simplificar para: totalVolume - totalReceived_daqueles_pedidos
-        const totalDue = Math.max(0, totalVolume - totalReceived)
+      const deliveryCount = todayOrders?.length || 0
+      const totalVolume = todayOrders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
+      const totalReceived = todayPayments?.reduce((sum, p) => sum + (p.valor || 0), 0) || 0
+      
+      // A receber hoje (Saldo dos pedidos de hoje)
+      // Isso é complexo se não tivermos o total confirmado por pedido, 
+      // mas vamos aproximar ou simplificar para: totalVolume - totalReceived_daqueles_pedidos
+      const totalDue = Math.max(0, totalVolume - totalReceived)
 
-        setDayMetrics({
-          deliveryCount,
-          totalDue,
-          totalReceived
-        })
-      } catch (error) {
-        console.error('Erro ao carregar pendências:', error)
-      } finally {
-        setMetricsLoading(false)
-      }
+      setDayMetrics({
+        deliveryCount,
+        totalDue,
+        totalReceived
+      })
+    } catch (error) {
+      console.error('Erro ao carregar pendências:', error)
+    } finally {
+      setMetricsLoading(false)
     }
+  }, [basePendencias])
 
+  useEffect(() => {
+    if (!profile) return
     loadPendenciasAndMetrics()
-  }, [profile, basePendencias])
+  }, [profile, loadPendenciasAndMetrics])
 
   if (loading || metricsLoading) {
     return (

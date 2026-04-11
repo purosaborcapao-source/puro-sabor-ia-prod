@@ -102,7 +102,7 @@ export function PendenciasList({
 }
 
 export function usePendencias() {
-  const pendencias: Pendencia[] = [
+  return React.useMemo(() => [
     {
       type: 'mensagens',
       count: 0,
@@ -139,7 +139,5 @@ export function usePendencias() {
       color: 'red',
       adminOnly: true
     }
-  ]
-
-  return pendencias
+  ], [])
 }

@@ -54,9 +54,19 @@ export function Sidebar() {
     }
   ]
 
-  const visibleItems = navItems.filter(
-    (item) => !item.roles || item.roles.includes(profile?.role || '')
-  )
+  const visibleItems = navItems.filter((item) => {
+    // Se não há requisitos de papel, o item é visível para todos
+    if (!item.roles) return true;
+    
+    // Admin sempre vê tudo (fallback de segurança)
+    if (profile?.role === 'ADMIN') return true;
+    
+    // Se ainda não temos o perfil, não mostramos nada por segurança 
+    // (o AuthContext deve segurar o loading até carregar o perfil)
+    if (!profile) return false;
+    
+    return item.roles.includes(profile.role);
+  });
 
   const isActive = (href: string) => {
     if (href === '/dashboard') {

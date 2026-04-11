@@ -6,7 +6,7 @@
 -- 1. Fix messages table (Error 1)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='messages' AND column_name='payload') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='messages' AND column_name='payload') THEN
         ALTER TABLE public.messages ADD COLUMN payload JSONB DEFAULT '{}';
     END IF;
 END $$;
@@ -16,19 +16,19 @@ COMMENT ON COLUMN public.messages.payload IS 'JSON com: intent, confidence, extr
 -- 2. Fix orders table (Error 2)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='sinal_valor') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='sinal_valor') THEN
         ALTER TABLE public.orders ADD COLUMN sinal_valor NUMERIC(10,2) NOT NULL DEFAULT 0;
     END IF;
     
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='payment_status') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='payment_status') THEN
         ALTER TABLE public.orders ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'SINAL_PENDENTE';
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='sinal_confirmado') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='sinal_confirmado') THEN
         ALTER TABLE public.orders ADD COLUMN sinal_confirmado BOOLEAN NOT NULL DEFAULT false;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='orders' AND column_name='conta_corrente') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='orders' AND column_name='conta_corrente') THEN
         ALTER TABLE public.orders ADD COLUMN conta_corrente BOOLEAN NOT NULL DEFAULT false;
     END IF;
 END $$;
@@ -36,11 +36,11 @@ END $$;
 -- 3. Fix order_changes table (Error 2)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_changes' AND column_name='is_ai_suggestion') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='order_changes' AND column_name='is_ai_suggestion') THEN
         ALTER TABLE public.order_changes ADD COLUMN is_ai_suggestion BOOLEAN DEFAULT FALSE;
     END IF;
 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='order_changes' AND column_name='status') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='order_changes' AND column_name='status') THEN
         -- Primeiro garantir que o tipo enum existe se não foi criado
         BEGIN
             CREATE TYPE public.order_change_status AS ENUM ('PENDENTE', 'APROVADO', 'REJEITADO');

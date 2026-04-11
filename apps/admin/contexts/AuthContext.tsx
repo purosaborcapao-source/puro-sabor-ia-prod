@@ -55,12 +55,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.session) {
           setSession(data.session)
           setUser(data.session.user)
-          // Desativa o loading global assim que temos o usuário, 
-          // permitindo que o Layout renderize as abas
-          setLoading(false) 
-          
-          // Busca o perfil em background
+          // Busca o perfil ANTES de desativar o loading se possível, 
+          // ou garante que o loading espere a resposta básica
           await fetchUserProfile(data.session.user.id)
+          setLoading(false)
         } else {
           setLoading(false)
         }
@@ -83,6 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null)
           setProfile(null)
         }
+        setLoading(false)
         setError(null)
       }
     )

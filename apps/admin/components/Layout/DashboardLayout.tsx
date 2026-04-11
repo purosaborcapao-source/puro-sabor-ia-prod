@@ -27,8 +27,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // Enquanto o login inicial acontece, mostramos um loader sutil
   if (loading && !user) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="h-screen flex flex-col items-center justify-center bg-black">
+        <div className="relative">
+          <div className="text-4xl animate-pulse">🍞</div>
+          <div className="absolute inset-0 border-2 border-blue-500/20 rounded-full scale-150 animate-ping"></div>
+        </div>
+        <div className="mt-8 text-[10px] font-black tracking-[0.3em] text-blue-500/50 uppercase">
+          Authenticating Session
+        </div>
       </div>
     )
   }

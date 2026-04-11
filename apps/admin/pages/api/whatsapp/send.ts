@@ -1,12 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
-const ZAPI_INSTANCE_ID = "3F175AF7F1DD51672580B20DE66F3711";
-const ZAPI_TOKEN = "AF53FC81B3501F7AC37AEC66";
+const ZAPI_INSTANCE_ID = process.env.NEXT_PUBLIC_ZAPI_INSTANCE_ID;
+const ZAPI_TOKEN = process.env.NEXT_PUBLIC_ZAPI_TOKEN;
 const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`;
 
 // Client-Token is the security key from Z-API dashboard (Security tab)
-// Set in .env.local as ZAPI_CLIENT_TOKEN
 const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || "";
 
 
@@ -31,6 +30,11 @@ export default async function handler(
     return res.status(400).json({ success: false, error: "phone and type are required" });
   }
 
+  if (!ZAPI_INSTANCE_ID || !ZAPI_TOKEN) {
+    console.error("❌ Z-API credentials missing in environment variables");
+    return res.status(500).json({ success: false, error: "WhatsApp integration not configured" });
+  }
+
   // Normalize phone: Z-API expects digits only
   const normalizedPhone = phone.replace(/\D/g, "");
 
@@ -38,7 +42,7 @@ export default async function handler(
     let zapiEndpoint = "";
     let zapiBody: Record<string, unknown> = { phone: normalizedPhone };
 
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "text":
         if (!message) return res.status(400).json({ success: false, error: "message is required for text" });
         zapiEndpoint = `${ZAPI_BASE}/send-text`;
@@ -68,6 +72,7 @@ export default async function handler(
     }
 
     // Call Z-API
+    console.log(`📤 Sending WhatsApp ${type} to ${normalizedPhone}...`);
     const zapiRes = await fetch(zapiEndpoint, {
       method: "POST",
       headers: {
@@ -80,7 +85,7 @@ export default async function handler(
     const zapiData = await zapiRes.json();
 
     if (!zapiRes.ok) {
-      console.error("❌ Z-API error:", zapiData);
+      console.error("❌ Z-API error returned:", zapiData);
       return res.status(zapiRes.status).json({
         success: false,
         error: zapiData?.error || "Z-API request failed",
@@ -94,21 +99,32 @@ export default async function handler(
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
 
-      await supabase.from("messages").insert({
+      // Map API type to DB uppercase Enum
+      const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
+
+      const { error: insertErr } = await supabase.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
-        direction: "OUTBOUND",
-        type,
+        direction: "OUTGOING", // Fixed: must be OUTGOING for DB Enum
+        type: dbType,
         content: message || caption || `[${type}]`,
         media_url: imageUrl || audioUrl || documentUrl || null,
         payload: { zapi_message_id: zapiData.messageId },
         zapi_status: "DELIVERED",
       });
+
+      if (insertErr) {
+        console.error("❌ Error saving message to Supabase:", insertErr);
+        // We don't return error here because Z-API already sent it, 
+        // but we should know it failed to record.
+      } else {
+        console.log("✅ Message saved to Supabase history");
+      }
     }
 
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
-    console.error("❌ Send error:", err);
+    console.error("❌ WhatsApp send handler error:", err);
     return res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : "Internal server error",

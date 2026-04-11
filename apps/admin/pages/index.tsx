@@ -1,39 +1,41 @@
 import Head from 'next/head'
+import { useRouter } from 'next/router'
+import { useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Home() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard/messages')
+    }
+  }, [user, loading, router])
+
   return (
     <>
       <Head>
-        <title>Atendimento IA - Admin</title>
-        <meta name="description" content="Painel administrativo de atendimento" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Puro Sabor IA - Carregando...</title>
       </Head>
 
-      <main className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center">
-            <h1 className="text-5xl font-bold text-blue-900 dark:text-blue-50 mb-4">
-              Painel Admin
-            </h1>
-            <p className="text-xl text-blue-700 dark:text-blue-200 mb-8">
-              Gerenciamento da plataforma de atendimento
-            </p>
-            <div className="bg-white dark:bg-blue-900 rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
-              <p className="text-blue-700 dark:text-blue-300">
-                ✅ Painel administrativo configurado
-              </p>
-              <p className="text-blue-700 dark:text-blue-300 mt-2">
-                ✅ Acesso a gerenciamento de atendimentos
-              </p>
-              <p className="text-blue-700 dark:text-blue-300 mt-2">
-                ✅ Integração com IA e banco de dados
-              </p>
-              <p className="text-blue-700 dark:text-blue-300 mt-2">
-                ✅ Dashboard em desenvolvimento
-              </p>
-            </div>
+      <main className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-5xl animate-bounce">🍞</div>
+          <div className="text-xs font-black tracking-[0.2em] text-blue-500 uppercase">
+            Iniciando Ops Center...
+          </div>
+          <div className="w-48 h-1 bg-gray-900 mx-auto rounded-full overflow-hidden">
+            <div className="h-full bg-blue-600 animate-[loading_2s_ease-in-out_infinite]" style={{ width: '30%' }}></div>
           </div>
         </div>
+
+        <style jsx>{`
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(400%); }
+          }
+        `}</style>
       </main>
     </>
   )

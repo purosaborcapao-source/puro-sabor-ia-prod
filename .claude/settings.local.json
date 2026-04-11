@@ -18,7 +18,8 @@
       "Bash(pnpm dev:*)",
       "Bash(xargs ls:*)",
       "Bash(pnpm --filter @atendimento-ia/admin build)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(pnpm --filter @atendimento-ia/supabase build)"
     ]
   }
 }
