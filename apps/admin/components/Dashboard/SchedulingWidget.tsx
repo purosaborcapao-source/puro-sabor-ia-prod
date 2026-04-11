@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { supabase } from '@atendimento-ia/supabase';
 import { Tables } from '@atendimento-ia/supabase';
 
