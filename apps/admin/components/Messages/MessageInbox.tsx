@@ -12,7 +12,7 @@ interface MessageChat {
   last_message: string;
   last_message_time: string;
   unread_count: number;
-  direction: "INCOMING" | "OUTGOING";
+  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
 }
 
 export const MessageInbox = React.memo(function MessageInbox() {

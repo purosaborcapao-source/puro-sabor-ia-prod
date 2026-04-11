@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 
 interface Message {
   id: string;
-  direction: "INCOMING" | "OUTGOING";
+  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
   content: string;
   type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
   created_at: string | null;
