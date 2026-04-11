@@ -80,7 +80,7 @@ export const TemplateBar: React.FC<TemplateBarProps> = ({
           </button>
         ))}
         {filteredTemplates.length === 0 && (
-          <span className="text-xs text-gray-500 italic px-2">Nenhum template encontrado para "{quickSearchText}"</span>
+          <span className="text-xs text-gray-500 italic px-2">Nenhum template encontrado para &quot;{quickSearchText}&quot;</span>
         )}
       </div>
     </div>
