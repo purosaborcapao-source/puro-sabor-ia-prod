@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -52,6 +54,50 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          customer_id: string
+          id: string
+          internal_notes: string | null
+          last_inbound_at: string | null
+          last_outbound_at: string | null
+          resolved_at: string | null
+          status: Database["public"]["Enums"]["conversation_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          id?: string
+          internal_notes?: string | null
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["conversation_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          id?: string
+          internal_notes?: string | null
+          last_inbound_at?: string | null
+          last_outbound_at?: string | null
+          resolved_at?: string | null
+          status?: Database["public"]["Enums"]["conversation_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: true
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]
@@ -130,14 +176,16 @@ export type Database = {
           customer_id: string | null
           direction: Database["public"]["Enums"]["message_direction"]
           id: string
+          is_read: boolean | null
           media_url: string | null
           message_ref: string | null
           order_id: string | null
+          payload: Json | null
           phone: string
+          sender_name: string | null
           type: Database["public"]["Enums"]["message_type"]
           updated_at: string | null
           zapi_status: Database["public"]["Enums"]["message_zapi_status"] | null
-          payload?: Json | null
         }
         Insert: {
           ai_handled?: boolean
@@ -146,16 +194,18 @@ export type Database = {
           customer_id?: string | null
           direction: Database["public"]["Enums"]["message_direction"]
           id?: string
+          is_read?: boolean | null
           media_url?: string | null
           message_ref?: string | null
           order_id?: string | null
+          payload?: Json | null
           phone: string
+          sender_name?: string | null
           type?: Database["public"]["Enums"]["message_type"]
           updated_at?: string | null
           zapi_status?:
             | Database["public"]["Enums"]["message_zapi_status"]
             | null
-          payload?: Json | null
         }
         Update: {
           ai_handled?: boolean
@@ -164,16 +214,18 @@ export type Database = {
           customer_id?: string | null
           direction?: Database["public"]["Enums"]["message_direction"]
           id?: string
+          is_read?: boolean | null
           media_url?: string | null
           message_ref?: string | null
           order_id?: string | null
+          payload?: Json | null
           phone?: string
+          sender_name?: string | null
           type?: Database["public"]["Enums"]["message_type"]
           updated_at?: string | null
           zapi_status?:
             | Database["public"]["Enums"]["message_zapi_status"]
             | null
-          payload?: Json | null
         }
         Relationships: [
           {
@@ -183,7 +235,7 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
-          {
+          {\
             foreignKeyName: "messages_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
@@ -198,30 +250,36 @@ export type Database = {
           created_at: string
           field: string
           id: string
+          is_ai_suggestion: boolean | null
           new_value: string | null
           old_value: string | null
           order_id: string
           reason: string | null
+          status: Database["public"]["Enums"]["order_change_status"] | null
         }
         Insert: {
           changed_by: string
           created_at?: string
           field: string
           id?: string
+          is_ai_suggestion?: boolean | null
           new_value?: string | null
           old_value?: string | null
           order_id: string
           reason?: string | null
+          status?: Database["public"]["Enums"]["order_change_status"] | null
         }
         Update: {
           changed_by?: string
           created_at?: string
           field?: string
           id?: string
+          is_ai_suggestion?: boolean | null
           new_value?: string | null
           old_value?: string | null
           order_id?: string
           reason?: string | null
+          status?: Database["public"]["Enums"]["order_change_status"] | null
         }
         Relationships: [
           {
@@ -394,7 +452,7 @@ export type Database = {
           registered_at?: string
           registered_by: string
           status?: Database["public"]["Enums"]["payment_confirmation_status"]
-          type: Database["public"]["Enums"]["payment_type"]
+          type?: Database["public"]["Enums"]["payment_type"]
           valor: number
         }
         Update: {
@@ -511,6 +569,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quick_templates: {
+        Row: {
+          category: string
+          content: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          shortcut: string | null
+          sort_order: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          content: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          sort_order?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          shortcut?: string | null
+          sort_order?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -616,10 +710,12 @@ export type Database = {
       initialize_delivery_slots: { Args: never; Returns: undefined }
     }
     Enums: {
+      conversation_status: "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED"
       delivery_type: "RETIRADA" | "ENTREGA"
       message_direction: "INBOUND" | "OUTBOUND"
       message_type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT"
       message_zapi_status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED"
+      order_change_status: "PENDENTE" | "APROVADO" | "REJEITADO"
       order_status:
         | "PENDENTE"
         | "CONFIRMADO"
@@ -766,10 +862,12 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      conversation_status: ["NEW", "IN_PROGRESS", "WAITING_ORDER", "RESOLVED"],
       delivery_type: ["RETIRADA", "ENTREGA"],
       message_direction: ["INBOUND", "OUTBOUND"],
       message_type: ["TEXT", "IMAGE", "AUDIO", "DOCUMENT"],
       message_zapi_status: ["PENDING", "SENT", "DELIVERED", "READ", "FAILED"],
+      order_change_status: ["PENDENTE", "APROVADO", "REJEITADO"],
       order_status: [
         "PENDENTE",
         "CONFIRMADO",
