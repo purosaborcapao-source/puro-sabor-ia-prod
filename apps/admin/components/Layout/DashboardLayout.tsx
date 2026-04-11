@@ -13,17 +13,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const isAuthPage = router.pathname.startsWith('/auth/')
 
-  // PRIORIDADE: Se for página de autenticação (Login), renderiza o conteúdo puro
-  // para evitar loops ou travamentos de carregamento da sessão global.
-  if (isAuthPage) {
-    return <>{children}</>
-  }
-
   useEffect(() => {
     if (!loading && !user && !isAuthPage) {
       router.replace('/auth/login')
     }
   }, [loading, user, isAuthPage, router])
+
+  // Se for página de autenticação (Login), renderiza o conteúdo puro
+  if (isAuthPage) {
+    return <>{children}</>
+  }
 
 
   // Enquanto o login inicial acontece, mostramos um loader sutil
