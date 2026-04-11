@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import Link from 'next/link';
 import { supabase } from "@atendimento-ia/supabase";
 import { ShoppingBag, Plus } from "lucide-react";
 import { OrderDetail } from "../Orders/OrderDetail";
@@ -14,6 +15,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [customerNotes, setCustomerNotes] = useState<string>("Carregando...");
 
   useEffect(() => {
     if (customerId) {
@@ -36,8 +38,19 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
 
       if (error) throw error;
       setOrders(data || []);
+
+      // Buscar as notas do cliente
+      const { data: customerData } = await supabase
+        .from("customers")
+        .select("notes")
+        .eq("id", customerId)
+        .single();
+        
+      if (customerData) {
+        setCustomerNotes(customerData.notes || "Sem notas sobre o cliente.");
+      }
     } catch (err) {
-      console.error("Erro ao carregar pedidos do contexto:", err);
+      console.error("Erro ao carregar detalhes do contexto:", err);
     } finally {
       setLoading(false);
     }
@@ -86,10 +99,14 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
           <>
             {/* Quick Actions */}
             <div className="flex gap-2">
-              <button className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <Link 
+                href={`/dashboard/orders/new?customer=${customerId}`}
+                className="flex-1 flex items-center justify-center gap-2 py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                target="_blank"
+              >
                 <Plus className="w-4 h-4" />
                 Novo Pedido
-              </button>
+              </Link>
             </div>
 
             {/* Pedidos Recentes */}
@@ -142,10 +159,10 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
             {/* Info do Cliente */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">
-                Instruções de Pagamento
+                Instruções / Notas Gerais
               </h3>
               <p className="text-sm text-gray-700 dark:text-gray-300">
-                Cliente prefere PIX. Sempre anexar comprovante do sinal.
+                {customerNotes}
               </p>
             </div>
           </>

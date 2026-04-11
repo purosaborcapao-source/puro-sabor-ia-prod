@@ -39,7 +39,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
       const { data, error: err } = await supabase
         .from("messages")
         .select(
-          "customer_id, phone, direction, content, created_at, customers:customer_id(name)"
+          "customer_id, phone, direction, content, created_at, is_read, customers:customer_id(name)"
         )
         .order("created_at", { ascending: false });
 
@@ -67,25 +67,16 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
         const chat = chatMap.get(customerId)!;
 
-        // Como as mensagens vêm do mais RECENTE para o mais ANTIGO:
-        // Se ainda não vimos um OUTBOUND, as mensagens INBOUND são "não lidas".
-        // Assim que vemos a primeira OUTBOUND (a mais recente), paramos de contar.
-        if (!hasSeenOutbound.has(customerId)) {
-          if (msg.direction === "INBOUND") {
-            chat.unread_count += 1;
-          } else {
-            hasSeenOutbound.add(customerId);
-          }
+        // Contador simples baseado na flag is_read
+        if (msg.direction === "INBOUND" && msg.is_read === false) {
+          chat.unread_count += 1;
         }
       });
 
       const chatList = Array.from(chatMap.values());
 
-      // Ordenar: mensagens incoming (não lidas) primeiro
+      // Ordenar: puramente cronológico (última mensagem recebida primeiro)
       chatList.sort((a, b) => {
-        if (a.unread_count !== b.unread_count) {
-          return b.unread_count - a.unread_count;
-        }
         return (
           new Date(b.last_message_time).getTime() -
           new Date(a.last_message_time).getTime()
