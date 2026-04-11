@@ -118,8 +118,9 @@ export default function CustomerDetailPage() {
                   <p className="text-xl font-black text-gray-900 dark:text-white">{orders.length} Pedidos</p>
                 </div>
                 <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 p-4 shadow-sm">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Cliente desde</p>
-                  <p className="text-xl font-black text-blue-600">{new Date(customer.created_at).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xl font-black text-blue-600">
+                    {customer.created_at ? new Date(customer.created_at).toLocaleDateString('pt-BR') : 'N/A'}
+                  </p>
                 </div>
               </div>
 
@@ -155,7 +156,9 @@ export default function CustomerDetailPage() {
                       {orders.map(order => (
                         <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-[#111] transition-all">
                           <td className="px-6 py-4 text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tighter">#{order.number}</td>
-                          <td className="px-6 py-4 text-[10px] text-gray-500 font-bold uppercase tracking-tight">{new Date(order.delivery_date).toLocaleDateString('pt-BR')}</td>
+                          <td className="px-6 py-4 text-[10px] text-gray-500 font-bold uppercase tracking-tight">
+                            {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('pt-BR') : 'N/A'}
+                          </td>
                           <td className="px-6 py-4 text-xs font-black text-gray-900 dark:text-white">{order.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                           <td className="px-6 py-4">
                             <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 uppercase">{order.status}</span>

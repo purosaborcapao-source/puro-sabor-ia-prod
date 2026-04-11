@@ -97,15 +97,15 @@ export const MessageInbox = React.memo(function MessageInbox() {
         
         // Em caso de empate de status, as que estão aguardando há mais tempo sobem
         if (a.status === "NEW" || a.status === "IN_PROGRESS") {
-           const timeA = a.last_inbound_at ? new Date(a.last_inbound_at).getTime() : 0;
-           const timeB = b.last_inbound_at ? new Date(b.last_inbound_at).getTime() : 0;
-           return timeA - timeB; // Menor tempo = mais antigo = SLA estourando sobe
+           const timeA = a.last_inbound_at ? new Date(a.last_inbound_at!).getTime() : 0;
+           const timeB = b.last_inbound_at ? new Date(b.last_inbound_at!).getTime() : 0;
+           return timeA - timeB;
         }
 
-        return (
-          new Date(b.last_message_time).getTime() -
-          new Date(a.last_message_time).getTime()
-        );
+        // Para as resolvidas, ordem cronológica inversa (mais recentes primeiro)
+        const timeA = a.last_message_time ? new Date(a.last_message_time!).getTime() : 0;
+        const timeB = b.last_message_time ? new Date(b.last_message_time!).getTime() : 0;
+        return timeB - timeA;
       });
 
       setChats(chatList);

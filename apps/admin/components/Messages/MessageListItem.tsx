@@ -94,7 +94,8 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
   );
 };
 
-function formatTimeAgo(dateString: string): string {
+function formatTimeAgo(dateString: string | null): string {
+  if (!dateString) return "";
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();

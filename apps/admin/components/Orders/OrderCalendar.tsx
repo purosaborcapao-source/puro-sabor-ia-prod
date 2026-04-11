@@ -96,7 +96,7 @@ export const OrderCalendar = React.memo(function OrderCalendar({ filters = {} }:
 
   const groupOrdersByDate = (dateObj: Date) => {
     const dtStr = dateObj.toLocaleDateString('pt-BR');
-    return orders.filter(o => new Date(o.delivery_date).toLocaleDateString('pt-BR') === dtStr);
+    return orders.filter(o => o.delivery_date && new Date(o.delivery_date).toLocaleDateString('pt-BR') === dtStr);
   };
 
   const getDayName = (dateObj: Date) => {

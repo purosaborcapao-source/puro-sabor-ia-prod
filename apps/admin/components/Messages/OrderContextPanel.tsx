@@ -56,7 +56,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
       if (customerData) {
         setCustomerNotes(customerData.notes || "Sem instruções gerais do cliente.");
         setCustomerPhone(customerData.phone);
-        setCustomerSince(new Date(customerData.created_at).toLocaleDateString("pt-BR", { month: 'short', year: 'numeric' }));
+        setCustomerSince(customerData.created_at ? new Date(customerData.created_at).toLocaleDateString("pt-BR", { month: 'short', year: 'numeric' }) : 'N/A');
       }
 
       // Buscar conversa
@@ -231,7 +231,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                         </span>
                       </div>
                       <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
-                        <span>{new Date(order.delivery_date).toLocaleDateString("pt-BR")}</span>
+                        <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR") : 'N/A'}</span>
                         <span className="font-semibold text-gray-900 dark:text-white">
                           {order.total.toLocaleString("pt-BR", {
                             style: "currency",

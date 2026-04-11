@@ -47,7 +47,11 @@ export const CustomerList = React.memo(function CustomerList({ filters = {} }: C
         const orders = c.orders || []
         const totalSpent = orders.reduce((sum: number, o: any) => sum + (o.total || 0), 0)
         const lastOrderDate = orders.length > 0 
-          ? orders.sort((a: any, b: any) => new Date(b.delivery_date).getTime() - new Date(a.delivery_date).getTime())[0].delivery_date 
+          ? orders.sort((a: any, b: any) => {
+              const dateB = b.delivery_date ? new Date(b.delivery_date).getTime() : 0;
+              const dateA = a.delivery_date ? new Date(a.delivery_date).getTime() : 0;
+              return dateB - dateA;
+            })[0].delivery_date 
           : undefined
 
         return {
@@ -176,7 +180,7 @@ export const CustomerList = React.memo(function CustomerList({ filters = {} }: C
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="text-[10px] text-gray-500 dark:text-gray-500 font-bold uppercase">
                   {customer.last_order_date 
-                    ? new Date(customer.last_order_date).toLocaleDateString('pt-BR')
+                    ? new Date(customer.last_order_date!).toLocaleDateString('pt-BR')
                     : 'Sem histórico'
                   }
                 </div>

@@ -225,7 +225,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
                 {order.product_name}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                {new Date(order.delivery_date).toLocaleDateString('pt-BR')}
+                {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('pt-BR') : 'N/A'}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                 {order.total.toLocaleString('pt-BR', {

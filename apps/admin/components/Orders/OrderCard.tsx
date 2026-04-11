@@ -37,7 +37,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban'
   const getStatusColor = (status: string) => statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
 
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const dateObj = new Date(order.delivery_date);
+  const dateObj = new Date(order.delivery_date || 0);
   
   return (
     <Link 

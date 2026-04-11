@@ -102,7 +102,7 @@ export function ChangeHistory({ orderId }: ChangeHistoryProps) {
               {getChangeLabel(change.change_type, change.details)}
             </p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {new Date(change.created_at).toLocaleString('pt-BR')}
+              {change.created_at ? new Date(change.created_at).toLocaleString('pt-BR') : ''}
             </p>
             {change.user_name && (
               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
