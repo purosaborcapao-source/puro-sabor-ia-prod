@@ -3,6 +3,8 @@ import { supabase } from "@atendimento-ia/supabase";
 import { MessageReplyForm } from "./MessageReplyForm";
 import { MessageBubble } from "./MessageBubble";
 import { AlertCircle } from "lucide-react";
+import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
+import { SLATimer } from "./SLATimer";
 
 interface Message {
   id: string;
@@ -24,6 +26,8 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [customerPhone, setCustomerPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [convStatus, setConvStatus] = useState<ConversationStatus | null>(null);
+  const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll para o final quando novas mensagens chegam
@@ -84,6 +88,27 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         setCustomerPhone(customer.phone);
       }
 
+      // Buscar status da conversa
+      const { data: convData } = await supabase
+        .from("conversations")
+        .select("status, last_inbound_at")
+        .eq("customer_id", customerId)
+        .single();
+        
+      if (convData) {
+        setConvStatus(convData.status as ConversationStatus);
+        setLastInboundAt(convData.last_inbound_at);
+        
+        // Auto-atribuir para Em Atendimento se for Nova
+        if (convData.status === "NEW") {
+          await supabase
+            .from("conversations")
+            .update({ status: "IN_PROGRESS" })
+            .eq("customer_id", customerId);
+          setConvStatus("IN_PROGRESS");
+        }
+      }
+
       // Buscar mensagens
       const { data, error: messagesError } = await supabase
         .from("messages")
@@ -139,14 +164,22 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         }),
       });
 
-      const data = await res.json();
-      if (!data.success) {
-        throw new Error(data.error || "Falha ao enviar via API");
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Erro ao conectar com Z-API");
       }
 
-      // O realtime já pegará a inserção e atualizará a lista
+      // Atualizar last_outbound_at
+      await supabase
+        .from("conversations")
+        .update({ 
+           last_outbound_at: new Date().toISOString(),
+           status: "IN_PROGRESS" // Garante que a conversa fica em atendimento após enviar algo
+        })
+        .eq("customer_id", customerId);
+
+      // O Realtime atualizará as mensagens nativamente.
     } catch (err) {
-      console.error("❌ Erro ao enviar resposta:", err);
       setError(
         err instanceof Error ? err.message : "Erro ao enviar mensagem"
       );
@@ -163,17 +196,22 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
   return (
     <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950">
-      {/* Header */}
-      <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm z-10">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-50 tracking-tight">
-              {customerName}
-            </h3>
-            <p className="text-[11px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
-              {messages.length} MENSAGENS NO HISTÓRICO
-            </p>
-          </div>
+      {/* Header Fixo */}
+      <div className="bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4 flex items-center justify-between shadow-sm z-10 shrink-0">
+        <div>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50 flex items-center gap-2">
+            {customerName}
+          </h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            {customerPhone || "Número não informado"}
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {convStatus && <ConversationStatusBadge status={convStatus} />}
+          {lastInboundAt && convStatus && (
+            <SLATimer status={convStatus} lastInboundAt={lastInboundAt} />
+          )}
         </div>
       </div>
 

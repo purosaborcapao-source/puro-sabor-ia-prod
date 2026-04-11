@@ -2,10 +2,12 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
 import { OrderList } from '@/components/Orders/OrderList'
+import { OrderTimeline } from '@/components/Orders/OrderTimeline'
+import { OrderCalendar } from '@/components/Orders/OrderCalendar'
 import { OrderFilters } from '@/components/Orders/OrderFilters'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ArrowLeftIcon, Plus } from 'lucide-react'
+import { ArrowLeftIcon, Plus, LayoutList, Kanban, Calendar as CalendarIcon } from 'lucide-react'
 
 export default function OrdersPage() {
   const router = useRouter()
@@ -16,6 +18,7 @@ export default function OrdersPage() {
     date: null as string | null,
     search: ''
   })
+  const [viewMode, setViewMode] = useState<"list" | "timeline" | "calendar">("timeline")
 
   // Callbacks para filtros - nunca recreadas
   const handleStatusChange = useCallback((status: string | null) => {
@@ -113,15 +116,38 @@ export default function OrdersPage() {
             />
           </div>
 
-          {/* Lista de Pedidos */}
+          {/* Visualização de Pedidos */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Pedidos
               </h2>
+              <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
+                <button
+                   onClick={() => setViewMode('timeline')}
+                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'timeline' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                >
+                  <Kanban className="w-4 h-4" /> Timeline
+                </button>
+                <button
+                   onClick={() => setViewMode('calendar')}
+                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'calendar' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                >
+                  <CalendarIcon className="w-4 h-4" /> Calendário
+                </button>
+                <button
+                   onClick={() => setViewMode('list')}
+                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'list' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                >
+                  <LayoutList className="w-4 h-4" /> Lista
+                </button>
+              </div>
             </div>
-            <div className="overflow-hidden">
-              <OrderList filters={filters} />
+            
+            <div className={`overflow-hidden ${viewMode !== 'list' ? 'p-4' : ''}`}>
+              {viewMode === 'list' && <OrderList filters={filters} />}
+              {viewMode === 'timeline' && <OrderTimeline filters={filters} />}
+              {viewMode === 'calendar' && <OrderCalendar filters={filters} />}
             </div>
           </div>
         </main>

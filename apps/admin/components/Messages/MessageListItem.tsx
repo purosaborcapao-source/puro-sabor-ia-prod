@@ -1,4 +1,6 @@
 import React from "react";
+import { ConversationStatusBadge } from "./ConversationStatusBadge";
+import { SLATimer } from "./SLATimer";
 
 interface MessageChat {
   customer_id: string;
@@ -8,6 +10,8 @@ interface MessageChat {
   last_message_time: string;
   unread_count: number;
   direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
+  status?: "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED";
+  last_inbound_at?: string | null;
 }
 
 interface MessageListItemProps {
@@ -59,6 +63,16 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
           )}
         </div>
       </div>
+
+      {/* SLA e Status Badge (se houver a propriedade status no chat) */}
+      {(chat.status || chat.last_inbound_at) && (
+        <div className="flex items-center gap-2 mb-2">
+          {chat.status && <ConversationStatusBadge status={chat.status} />}
+          {chat.last_inbound_at && chat.status && (
+            <SLATimer status={chat.status} lastInboundAt={chat.last_inbound_at} />
+          )}
+        </div>
+      )}
 
       {/* Indicador de direção + Preview */}
       <div className="flex items-center gap-1">

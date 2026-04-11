@@ -13,6 +13,8 @@ interface MessageChat {
   last_message_time: string;
   unread_count: number;
   direction: "INBOUND" | "OUTBOUND";
+  status?: "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED";
+  last_inbound_at?: string | null;
 }
 
 export const MessageInbox = React.memo(function MessageInbox() {
@@ -22,7 +24,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "unread">("unread");
+  const [filter, setFilter] = useState<"ALL" | "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED">("NEW");
 
   // Carregar lista de chats
   const loadChats = useCallback(async () => {
@@ -35,17 +37,25 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
       console.log("🔄 [MessageInbox] Carregando chats...");
 
-      // Buscar último mensagem por customer
-      const { data, error: err } = await supabase
-        .from("messages")
-        .select(
-          "customer_id, phone, direction, content, created_at, is_read, customers:customer_id(name)"
-        )
-        .order("created_at", { ascending: false });
+      // Buscar último mensagem por customer E status da conversa
+      const [messagesRes, convsRes] = await Promise.all([
+        supabase
+          .from("messages")
+          .select(
+            "customer_id, phone, direction, content, created_at, is_read, customers:customer_id(name)"
+          )
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("conversations")
+          .select("customer_id, status, last_inbound_at")
+      ]);
 
-      if (err) {
-        throw err;
-      }
+      if (messagesRes.error) throw messagesRes.error;
+      if (convsRes.error) throw convsRes.error;
+
+      const data = messagesRes.data;
+      const convs = convsRes.data || [];
+      const convMap = new Map(convs.map((c) => [c.customer_id, c]));
 
       // Agrupar por customer_id e calcular unread_count (INBOUNDs desde o último OUTBOUND)
       const chatMap = new Map<string, MessageChat>();
@@ -53,6 +63,8 @@ export const MessageInbox = React.memo(function MessageInbox() {
       data?.forEach((msg: any) => {
         const customerId = msg.customer_id;
         if (!chatMap.has(customerId)) {
+          const conv = convMap.get(customerId);
+          
           chatMap.set(customerId, {
             customer_id: customerId,
             phone: msg.phone,
@@ -61,6 +73,8 @@ export const MessageInbox = React.memo(function MessageInbox() {
             last_message_time: msg.created_at,
             unread_count: 0,
             direction: msg.direction,
+            status: conv?.status || "RESOLVED",
+            last_inbound_at: conv?.last_inbound_at,
           });
         }
 
@@ -74,8 +88,20 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
       const chatList = Array.from(chatMap.values());
 
-      // Ordenar: puramente cronológico (última mensagem recebida primeiro)
+      // Ordenar: primeiro NEW/IN_PROGRESS mais antigas (SLA), depois resto cronológico
       chatList.sort((a, b) => {
+        if (a.status === "NEW" && b.status !== "NEW") return -1;
+        if (b.status === "NEW" && a.status !== "NEW") return 1;
+        if (a.status === "IN_PROGRESS" && b.status !== "IN_PROGRESS") return -1;
+        if (b.status === "IN_PROGRESS" && a.status !== "IN_PROGRESS") return 1;
+        
+        // Em caso de empate de status, as que estão aguardando há mais tempo sobem
+        if (a.status === "NEW" || a.status === "IN_PROGRESS") {
+           const timeA = a.last_inbound_at ? new Date(a.last_inbound_at).getTime() : 0;
+           const timeB = b.last_inbound_at ? new Date(b.last_inbound_at).getTime() : 0;
+           return timeA - timeB; // Menor tempo = mais antigo = SLA estourando sobe
+        }
+
         return (
           new Date(b.last_message_time).getTime() -
           new Date(a.last_message_time).getTime()
@@ -104,33 +130,34 @@ export const MessageInbox = React.memo(function MessageInbox() {
   useEffect(() => {
     loadChats();
 
-    // Realtime subscription
-    const subscription = supabase
+    // Realtime subscription para messages e conversations
+    const subMessages = supabase
       .channel("messages:realtime")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-        },
-        () => {
-          console.log("📬 [MessageInbox] Nova mensagem recebida, atualizando...");
-          loadChats();
-        }
+        { event: "*", schema: "public", table: "messages" },
+        () => loadChats()
+      )
+      .subscribe();
+
+    const subConversations = supabase
+      .channel("conversations:realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => loadChats()
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      subMessages.unsubscribe();
+      subConversations.unsubscribe();
     };
   }, [loadChats]);
 
   const filteredChats = chats.filter((chat) => {
-    if (filter === "unread") {
-      return chat.unread_count > 0;
-    }
-    return true;
+    if (filter === "ALL") return true;
+    return chat.status === filter;
   });
 
   if (loading) {
@@ -183,33 +210,32 @@ export const MessageInbox = React.memo(function MessageInbox() {
             </button>
           </div>
 
-          {/* Filtros */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter("unread")}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                filter === "unread"
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                  : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-              }`}
-            >
-              Pendentes
-              {chats.filter((c) => c.unread_count > 0).length > 0 && (
-                <span className="ml-1 font-semibold">
-                  ({chats.filter((c) => c.unread_count > 0).length})
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setFilter("all")}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                filter === "all"
-                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                  : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-              }`}
-            >
-              Todos ({chats.length})
-            </button>
+          {/* Filtros de Status */}
+          <div className="flex gap-1 overflow-x-auto pb-2 hide-scrollbar">
+            {[
+              { label: "Novas", value: "NEW", icon: "📬" },
+              { label: "Em Atend.", value: "IN_PROGRESS", icon: "💬" },
+              { label: "Ag. Pedido", value: "WAITING_ORDER", icon: "📋" },
+              { label: "Resolvidos", value: "RESOLVED", icon: "✅" },
+              { label: "Todos", value: "ALL", icon: "📂" },
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value as typeof filter)}
+                className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-lg transition-colors ${
+                  filter === f.value
+                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium"
+                    : "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                {f.icon} {f.label}
+                {f.value !== "ALL" && f.value !== "RESOLVED" && chats.filter(c => c.status === f.value).length > 0 && (
+                  <span className="ml-1 bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded-full text-[10px]">
+                    {chats.filter(c => c.status === f.value).length}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -217,9 +243,11 @@ export const MessageInbox = React.memo(function MessageInbox() {
         <div className="flex-1 overflow-y-auto">
           {filteredChats.length === 0 ? (
             <div className="p-4 text-center text-gray-600 dark:text-gray-400">
-              {filter === "unread"
-                ? "Nenhuma mensagem pendente"
-                : "Nenhuma mensagem"}
+              {filter === "NEW" 
+                ? "Nenhuma mensagem nova" 
+                : filter === "IN_PROGRESS"
+                ? "Nenhum atendimento em andamento"
+                : "Nenhuma conversa encontrada"}
             </div>
           ) : (
             filteredChats.map((chat) => (
