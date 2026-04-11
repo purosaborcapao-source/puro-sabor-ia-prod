@@ -129,7 +129,7 @@ async function handleUpdateOrder(
     if (status !== undefined && status !== currentOrder.status) {
       updateData.status = status
       changes.push({
-        field: 'status',
+        field: 'status' as any,
         old_value: currentOrder.status,
         new_value: status,
         reason

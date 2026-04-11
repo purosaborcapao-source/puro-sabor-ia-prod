@@ -101,7 +101,7 @@ export default async function handler(
     const { error: logError } = await supabase.from('order_changes').insert({
       order_id: orderId,
       changed_by: user.id,
-      field: 'status',
+      field: 'status' as any,
       old_value: order.status,
       new_value: 'CANCELADO',
       reason: 'Order cancelled by user',

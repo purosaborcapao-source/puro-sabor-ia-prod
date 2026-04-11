@@ -182,7 +182,7 @@ async function handleCreateOrder(
     await supabaseServer.from('order_changes').insert({
       order_id: newOrder.id,
       changed_by: userId,
-      field: 'status',
+      field: 'status' as any,
       old_value: null,
       new_value: 'PENDENTE',
       reason: 'Order created'
