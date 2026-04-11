@@ -18,6 +18,9 @@ type ApiResponse = {
   success: boolean;
   messageId?: string;
   error?: string;
+  details?: unknown;
+  warning?: string;
+  zapiId?: string;
 };
 
 export default async function handler(
