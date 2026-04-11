@@ -49,7 +49,6 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
       // Agrupar por customer_id e calcular unread_count (INBOUNDs desde o último OUTBOUND)
       const chatMap = new Map<string, MessageChat>();
-      const hasSeenOutbound = new Set<string>();
 
       data?.forEach((msg: any) => {
         const customerId = msg.customer_id;
