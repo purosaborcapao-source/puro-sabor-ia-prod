@@ -2,7 +2,7 @@ import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
 import { CustomerList } from '@/components/Customers/CustomerList'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeftIcon, Search, UserPlus } from 'lucide-react'
 

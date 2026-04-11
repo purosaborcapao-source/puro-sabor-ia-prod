@@ -4,13 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FieldWithPermission } from '@/components/UI/FieldWithPermission';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RegisterPaymentModal } from './RegisterPaymentModal';
-import { ChangeHistory } from './ChangeHistory';
 import { ConfirmPaymentButton } from './ConfirmPaymentButton';
 import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
-import { AlertCircle, Plus, MessageCircle, Brain, ShoppingBag, LayoutGrid } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid } from 'lucide-react';
 
 interface Order {
   id: string;

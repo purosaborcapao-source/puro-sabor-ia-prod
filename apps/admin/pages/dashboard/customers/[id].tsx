@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 import Link from 'next/link'
-import { ArrowLeftIcon, Phone, Calendar, ShoppingBag, MessageCircle } from 'lucide-react'
+import { ArrowLeftIcon, Phone, ShoppingBag, MessageCircle } from 'lucide-react'
 import { WhatsAppPanel } from '@/components/Orders/WhatsAppPanel'
 
 interface Customer {

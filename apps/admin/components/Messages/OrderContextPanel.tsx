@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@atendimento-ia/supabase";
-import { ShoppingBag, CreditCard, History, Plus, AlertCircle } from "lucide-react";
+import { ShoppingBag, Plus } from "lucide-react";
 import { OrderDetail } from "../Orders/OrderDetail";
 
 interface OrderContextPanelProps {

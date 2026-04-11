@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
-import { Brain, Check, X, AlertCircle } from 'lucide-react'
+import { Brain, Check, X } from 'lucide-react'
 
 interface AISuggestion {
   id: string

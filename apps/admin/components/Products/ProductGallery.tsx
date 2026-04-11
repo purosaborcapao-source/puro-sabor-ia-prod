@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 import { ProductCard } from './ProductCard'
-import { Search, Filter, Grid, List as ListIcon, RefreshCcw } from 'lucide-react'
+import { Search, Grid, RefreshCcw } from 'lucide-react'
 
 interface Product {
   id: string

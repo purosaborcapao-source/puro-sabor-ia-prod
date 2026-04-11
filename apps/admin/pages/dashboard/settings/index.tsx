@@ -5,7 +5,7 @@ import { GeneralSettings } from '@/components/Settings/GeneralSettings'
 import { PaymentSettings } from '@/components/Settings/PaymentSettings'
 import { AISettings } from '@/components/Settings/AISettings'
 import { useState, useEffect } from 'react'
-import { Settings, CreditCard, Bot, LayoutGrid } from 'lucide-react'
+import { Settings, CreditCard, Bot } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()

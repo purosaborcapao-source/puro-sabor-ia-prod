@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Head from "next/head";
 import { supabase } from "@atendimento-ia/supabase";
-import { Layout, Users, Clock, CheckCircle, ArrowRight, Filter } from "lucide-react";
+import { Users, Clock, CheckCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 interface KanbanOrder {

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
 import { ProductGallery } from '@/components/Products/ProductGallery'
-import { Package, Plus, LayoutGrid, Search } from 'lucide-react'
+import { Package, Plus, Search } from 'lucide-react'
 
 export default function ProductsPage() {
   const router = useRouter()
