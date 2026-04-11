@@ -106,7 +106,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       const { error } = await supabase.from("messages").insert({
         customer_id: customerId,
         phone: "", // Será preenchido pelo trigger
-        direction: "OUTGOING",
+        direction: "OUTBOUND",
         type: "TEXT",
         content,
         payload: {

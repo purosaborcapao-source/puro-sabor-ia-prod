@@ -14,7 +14,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const isIncoming = message.direction === "INCOMING";
+  const isIncoming = message.direction === "INBOUND";
   const payload = message.payload as any;
   const intent = payload?.intent;
 

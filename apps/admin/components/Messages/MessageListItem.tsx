@@ -64,12 +64,12 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
       <div className="flex items-center gap-1">
         <span
           className={`text-xs font-medium ${
-            chat.direction === "INCOMING"
+            chat.direction === "INBOUND"
               ? "text-blue-600 dark:text-blue-400"
               : "text-green-600 dark:text-green-400"
           }`}
         >
-          {chat.direction === "INCOMING" ? "📥" : "📤"}
+          {chat.direction === "INBOUND" ? "📥" : "📤"}
         </span>
         <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-1">
           {preview}

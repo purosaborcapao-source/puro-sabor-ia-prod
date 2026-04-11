@@ -102,7 +102,7 @@ export default async function handler(
       await supabase.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
-        direction: "OUTGOING",
+        direction: "OUTBOUND",
         type,
         content: message || caption || `[${type}]`,
         media_url: imageUrl || audioUrl || documentUrl || null,

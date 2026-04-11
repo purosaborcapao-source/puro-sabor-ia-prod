@@ -73,9 +73,9 @@ export const MessageInbox = React.memo(function MessageInbox() {
       const chatList = Array.from(chatMap.values());
 
       // Ordenar: mensagens incoming (não lidas) primeiro
-      chatList.sort((a, b) => {
+        chatList.sort((a, b) => {
         if (a.direction !== b.direction) {
-          return a.direction === "INCOMING" ? -1 : 1;
+          return a.direction === "INBOUND" ? -1 : 1;
         }
         return (
           new Date(b.last_message_time).getTime() -
