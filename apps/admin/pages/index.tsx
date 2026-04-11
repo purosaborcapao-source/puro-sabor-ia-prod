@@ -8,8 +8,12 @@ export default function Home() {
   const { user, loading } = useAuth()
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace('/dashboard/messages')
+    if (!loading) {
+      if (user) {
+        router.replace('/dashboard/messages')
+      } else {
+        router.replace('/auth/login')
+      }
     }
   }, [user, loading, router])
 
