@@ -10,8 +10,12 @@ let cachedMiddlewareClient: SupabaseClient<Database> | null = null
 // CLIENT - For browser/frontend (anon key)
 // ============================================================================
 export function createClient(): SupabaseClient<Database> {
+  console.log('🔗 [supabase] Inicializando createClient...')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  
+  console.log('🔗 [supabase] URL definida:', !!supabaseUrl)
+  console.log('🔗 [supabase] AnonKey definida:', !!supabaseAnonKey)
 
   if (!supabaseUrl || !supabaseAnonKey) {
     const errorMsg = 'Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set';

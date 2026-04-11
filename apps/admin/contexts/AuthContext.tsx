@@ -33,20 +33,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
+    let timeoutId: any
 
     const initAuth = async () => {
       try {
-        console.log('🔐 AuthContext: Iniciando autenticação...')
+        console.log('🔐 AuthContext: Iniciando initAuth...')
 
         // Proteção contra cliente não inicializado
         if (!supabaseClient || !supabaseClient.auth) {
-          console.warn('⚠️ AuthContext: Supabase client não disponível.')
-          setLoading(false)
+          console.warn('⚠️ AuthContext: Supabase client ou auth não disponível.')
+          if (isMounted) setLoading(false)
           return
         }
 
+        // Safety timeout: se em 5 segundos não resolvermos a sessão, liberamos o loading
+        // Isso permite que o usuário use o formulário mesmo se o getSession() travar
+        timeoutId = setTimeout(() => {
+          if (isMounted && loading) {
+            console.warn('⚠️ AuthContext: Timeout de 5s atingido no getSession. Liberando UI...')
+            setLoading(false)
+          }
+        }, 5000)
+
+        console.log('🔐 AuthContext: Chamando getSession()...')
+        
         // Tentar buscar sessão atual
         const { data, error: err } = await supabaseClient.auth.getSession()
+        
+        // Se chegarmos aqui, cancelamos o timeout de segurança
+        clearTimeout(timeoutId)
+        console.log('🔐 AuthContext: getSession() resolveu.')
 
         if (err) {
           console.error('🔐 AuthContext: Erro ao obter sessão:', err.message)
@@ -64,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('🔥 AuthContext: Erro crítico durante autenticação:', err)
       } finally {
         if (isMounted) {
+          console.log('🔐 AuthContext: Finalizando initAuth (setting loading to false)')
           setLoading(false)
         }
       }
@@ -71,20 +88,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initAuth()
 
+    console.log('🔐 AuthContext: Configurando onAuthStateChange...')
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(
-      async (_event: string, session: Session | null) => {
+      async (event: string, session: Session | null) => {
+        console.log(`🔐 AuthContext: Evento de Auth alterado: ${event}`)
         if (!isMounted) return
+        
         setSession(session)
         if (session?.user) {
           setUser(session.user)
-          // Só buscamos o perfil se necessário ou se mudou o usuário
           await fetchUserProfile(session.user.id)
         } else {
           setUser(null)
           setProfile(null)
         }
         
-        // Timeout pequeno para garantir que o estado do React estabilize antes de tirar o loader
         setTimeout(() => {
           if (isMounted) {
             setLoading(false)
@@ -96,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false
+      if (timeoutId) clearTimeout(timeoutId)
       authListener?.subscription.unsubscribe()
     }
   }, [])
@@ -121,6 +140,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('🔐 AuthContext: Tentando signIn com password...')
       setError(null)
       const { error: err } = await supabaseClient.auth.signInWithPassword({
         email,
@@ -128,8 +148,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (err) {
+        console.error('🔐 AuthContext: Erro no signInWithPassword:', err.message)
         throw err
       }
+      console.log('✅ AuthContext: signInWithPassword concluído com sucesso.')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign in failed'
       setError(message)
