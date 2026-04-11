@@ -59,7 +59,7 @@ export function ConfirmPaymentButton({
       
       // 3. Determinar novo status financeiro do pedido
       // Se total >= total do pedido, QUITADO. Senão, se tem algum confirmado, SINAL_PAGO.
-      let newPaymentStatus = 'SINAL_PENDENTE'
+      let newPaymentStatus: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE' = 'SINAL_PENDENTE'
       if (totalConfirmed >= orderTotal) {
         newPaymentStatus = 'QUITADO'
       } else if (totalConfirmed > 0) {

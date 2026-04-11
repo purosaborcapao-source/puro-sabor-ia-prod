@@ -20,7 +20,7 @@ interface Order {
   delivery_date: string;
   delivery_type: string;
   status: string;
-  payment_status: string;
+  payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
   sinal_valor: number;
   sinal_confirmado: boolean;
@@ -216,7 +216,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
               )}
             </div>
             <div className="text-right">
-              <PaymentStatusBadge status={order.payment_status as any} />
+              <PaymentStatusBadge status={order.payment_status} />
             </div>
           </div>
 

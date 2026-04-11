@@ -107,7 +107,7 @@ async function handleConfirmPayment(
     const orderTotal = paymentEntry.orders?.total_valor || 0
 
     // Determine new payment status
-    let newPaymentStatus = 'SINAL_PENDENTE'
+    let newPaymentStatus: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE' = 'SINAL_PENDENTE'
 
     if (totalConfirmed >= orderTotal) {
       newPaymentStatus = 'QUITADO'

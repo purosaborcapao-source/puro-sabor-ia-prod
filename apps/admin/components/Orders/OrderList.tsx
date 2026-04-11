@@ -14,7 +14,7 @@ interface Order {
   delivery_date: string
   total: number
   status: string
-  payment_status: string
+  payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE'
   sinal_valor: number
   has_ai_suggestion?: boolean
 }
@@ -235,7 +235,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
               </td>
               {(profile?.role === 'ADMIN' || profile?.role === 'GERENTE') && (
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <PaymentStatusBadge status={order.payment_status as 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE'} showLabel={false} />
+                  <PaymentStatusBadge status={order.payment_status} showLabel={false} />
                 </td>
               )}
               <td className="px-6 py-4 whitespace-nowrap text-sm">
