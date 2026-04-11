@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('✅ AuthContext: Sessão recuperada com sucesso.')
           setSession(data.session)
           setUser(data.session.user)
-          await fetchUserProfile(data.session.user.id)
+          fetchUserProfile(data.session.user.id) // Non-blocking
         } else {
           console.log('ℹ️ AuthContext: Nenhuma sessão ativa encontrada.')
         }
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         if (session?.user) {
           setUser(session.user)
-          await fetchUserProfile(session.user.id)
+          fetchUserProfile(session.user.id) // Non-blocking
         } else {
           setUser(null)
           setProfile(null)
@@ -121,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log(`🔐 AuthContext: Buscando perfil para o usuário ${userId}...`)
       const { data, error: err } = await supabaseClient
         .from('profiles')
         .select('*')
@@ -128,13 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (err) {
-        console.error('Failed to fetch profile:', err)
+        console.error('❌ AuthContext: Erro ao buscar perfil:', err)
         return
       }
 
+      console.log('✅ AuthContext: Perfil carregado com sucesso:', data?.name)
       setProfile(data as UserProfile)
     } catch (err) {
-      console.error('Error fetching profile:', err)
+      console.error('🔥 AuthContext: Erro na função fetchUserProfile:', err)
     }
   }
 
