@@ -6,7 +6,7 @@ import { AlertCircle } from "lucide-react";
 
 interface Message {
   id: string;
-  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
+  direction: "INCOMING" | "OUTGOING";
   content: string;
   type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
   created_at: string | null;
@@ -20,6 +20,7 @@ interface MessageThreadProps {
 export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [customerName, setCustomerName] = useState("Cliente");
+  const [customerPhone, setCustomerPhone] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -70,12 +71,13 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar customer
       const { data: customer, error: customerError } = await supabase
         .from("customers")
-        .select("name")
+        .select("name, phone")
         .eq("id", customerId)
         .single();
 
       if (!customerError && customer) {
         setCustomerName(customer.name);
+        setCustomerPhone(customer.phone);
       }
 
       // Buscar mensagens
@@ -89,7 +91,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         throw messagesError;
       }
 
-      setMessages(data || []);
+      setMessages(data as Message[] || []);
     } catch (err) {
       console.error("❌ Erro ao carregar mensagens:", err);
       setError(
@@ -101,25 +103,31 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   };
 
   const handleSendReply = async (content: string) => {
+    if (!customerPhone) {
+      setError("Telefone do cliente não encontrado.");
+      return;
+    }
+
     try {
-      // Inserir mensagem como OUTBOUND
-      const { error } = await supabase.from("messages").insert({
-        customer_id: customerId,
-        phone: "", // Será preenchido pelo trigger
-        direction: "OUTBOUND",
-        type: "TEXT",
-        content,
-        payload: {
-          manual_reply: true,
-          sent_by_admin: true,
-        },
+      setError(null);
+      // Chamar API de envio que já lida com Z-API e gravação no banco
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "text",
+          phone: customerPhone,
+          message: content,
+          customerId,
+        }),
       });
 
-      if (error) {
-        throw error;
+      const data = await res.json();
+      if (!data.success) {
+        throw new Error(data.error || "Falha ao enviar via API");
       }
 
-      // Recarregar mensagens
+      // Recarregar mensagens (o realtime também pegará a inserção)
       await loadMessages();
     } catch (err) {
       console.error("❌ Erro ao enviar resposta:", err);

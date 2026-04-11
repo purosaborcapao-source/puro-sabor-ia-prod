@@ -12,7 +12,7 @@ interface MessageChat {
   last_message: string;
   last_message_time: string;
   unread_count: number;
-  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
+  direction: "INCOMING" | "OUTGOING";
 }
 
 export const MessageInbox = React.memo(function MessageInbox() {
@@ -73,9 +73,9 @@ export const MessageInbox = React.memo(function MessageInbox() {
       const chatList = Array.from(chatMap.values());
 
       // Ordenar: mensagens incoming (não lidas) primeiro
-        chatList.sort((a, b) => {
-        if (a.direction !== b.direction) {
-          return a.direction === "INBOUND" ? -1 : 1;
+      chatList.sort((a, b) => {
+        if (a.unread_count !== b.unread_count) {
+          return b.unread_count - a.unread_count;
         }
         return (
           new Date(b.last_message_time).getTime() -

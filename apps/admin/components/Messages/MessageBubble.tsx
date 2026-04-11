@@ -2,7 +2,7 @@ import React from "react";
 
 interface Message {
   id: string;
-  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
+  direction: "INCOMING" | "OUTGOING";
   content: string;
   type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
   created_at: string | null;
@@ -14,7 +14,7 @@ interface MessageBubbleProps {
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
-  const isIncoming = message.direction === "INBOUND";
+  const isIncoming = message.direction === "INCOMING";
   const payload = message.payload as any;
   const intent = payload?.intent;
 
@@ -34,7 +34,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         className={`max-w-xs px-4 py-2 rounded-lg ${
           isIncoming
             ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white"
-            : "bg-blue-500 text-white"
+            : "bg-emerald-600 text-white"
         }`}
       >
         <p className="text-sm break-words">{message.content}</p>

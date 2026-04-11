@@ -617,7 +617,7 @@ export type Database = {
     }
     Enums: {
       delivery_type: "RETIRADA" | "ENTREGA"
-      message_direction: "INBOUND" | "OUTBOUND"
+      message_direction: "INCOMING" | "OUTGOING"
       message_type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT"
       message_zapi_status: "PENDING" | "SENT" | "DELIVERED" | "READ" | "FAILED"
       order_status:
@@ -767,7 +767,7 @@ export const Constants = {
   public: {
     Enums: {
       delivery_type: ["RETIRADA", "ENTREGA"],
-      message_direction: ["INBOUND", "OUTBOUND"],
+      message_direction: ["INCOMING", "OUTGOING"],
       message_type: ["TEXT", "IMAGE", "AUDIO", "DOCUMENT"],
       message_zapi_status: ["PENDING", "SENT", "DELIVERED", "READ", "FAILED"],
       order_status: [
