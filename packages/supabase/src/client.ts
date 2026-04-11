@@ -31,7 +31,9 @@ export function createClient(): SupabaseClient<Database> {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storageKey: 'puro-sabor-ia-auth-session',
+      flowType: 'pkce'
     }
   })
   return cachedClient

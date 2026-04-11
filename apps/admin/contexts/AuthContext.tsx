@@ -50,19 +50,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (err) {
           console.error('🔐 AuthContext: Erro ao obter sessão:', err.message)
-          setLoading(false)
-          return
         }
 
         if (data.session) {
+          console.log('✅ AuthContext: Sessão recuperada com sucesso.')
           setSession(data.session)
           setUser(data.session.user)
           await fetchUserProfile(data.session.user.id)
+        } else {
+          console.log('ℹ️ AuthContext: Nenhuma sessão ativa encontrada.')
         }
       } catch (err) {
         console.error('🔥 AuthContext: Erro crítico durante autenticação:', err)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
@@ -74,13 +77,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session)
         if (session?.user) {
           setUser(session.user)
+          // Só buscamos o perfil se necessário ou se mudou o usuário
           await fetchUserProfile(session.user.id)
         } else {
           setUser(null)
           setProfile(null)
         }
-        setLoading(false)
-        setError(null)
+        
+        // Timeout pequeno para garantir que o estado do React estabilize antes de tirar o loader
+        setTimeout(() => {
+          if (isMounted) {
+            setLoading(false)
+            setError(null)
+          }
+        }, 100)
       }
     )
 

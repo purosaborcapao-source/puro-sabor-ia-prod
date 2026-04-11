@@ -25,17 +25,25 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
 
-  // Enquanto o login inicial acontece, mostramos um loader sutil
+  // Enquanto o login inicial acontece, mostramos um loader sutil e premium
   if (loading && !user) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-black">
-        <div className="relative">
-          <div className="text-4xl animate-pulse">🍞</div>
-          <div className="absolute inset-0 border-2 border-blue-500/20 rounded-full scale-150 animate-ping"></div>
+      <div className="h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+        <div className="relative flex flex-col items-center">
+          <div className="text-5xl mb-8 animate-pulse grayscale">🍞</div>
+          <div className="w-48 h-[1px] bg-zinc-200 dark:bg-zinc-800 relative overflow-hidden">
+            <div className="absolute inset-0 bg-zinc-400 dark:bg-zinc-500 animate-[loading_2s_infinite_ease-in-out]" />
+          </div>
+          <div className="mt-6 text-[10px] font-semibold tracking-[0.4em] text-zinc-400 dark:text-zinc-500 uppercase">
+            Sincronizando Sessão
+          </div>
         </div>
-        <div className="mt-8 text-[10px] font-black tracking-[0.3em] text-blue-500/50 uppercase">
-          Authenticating Session
-        </div>
+        <style jsx>{`
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
       </div>
     )
   }
@@ -47,7 +55,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
       {/* Sidebar */}
       <Sidebar />
 
