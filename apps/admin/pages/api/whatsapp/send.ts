@@ -1,6 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { createClient } from "@supabase/supabase-js";
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
 const ZAPI_INSTANCE_ID = process.env.NEXT_PUBLIC_ZAPI_INSTANCE_ID;
 const ZAPI_TOKEN = process.env.NEXT_PUBLIC_ZAPI_TOKEN;
 const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`;
@@ -97,15 +102,13 @@ export default async function handler(
 
     // Save outgoing message to Supabase
     if (customerId) {
-      const supabaseObj = createClient();
-
       // Map API type to DB uppercase Enum
       const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
 
-      const { error: insertErr } = await supabaseObj.from("messages").insert({
+      const { error: insertErr } = await supabase.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
-        direction: "OUTGOING", 
+        direction: "OUTBOUND",
         type: dbType,
         content: message || caption || `[${type}]`,
         media_url: imageUrl || audioUrl || documentUrl || null,
