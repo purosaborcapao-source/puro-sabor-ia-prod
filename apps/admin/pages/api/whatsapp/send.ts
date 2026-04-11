@@ -72,7 +72,7 @@ export default async function handler(
     }
 
     // Call Z-API
-    console.log(`📤 Sending WhatsApp ${type} to ${normalizedPhone}...`);
+    console.log(`🚀 [whatsapp/send] Sending ${type} to ${normalizedPhone} via Z-API...`);
     const zapiRes = await fetch(zapiEndpoint, {
       method: "POST",
       headers: {
@@ -85,12 +85,15 @@ export default async function handler(
     const zapiData = await zapiRes.json();
 
     if (!zapiRes.ok) {
-      console.error("❌ Z-API error returned:", zapiData);
+      console.error("❌ [whatsapp/send] Z-API error:", zapiData);
       return res.status(zapiRes.status).json({
         success: false,
-        error: zapiData?.error || "Z-API request failed",
+        error: zapiData?.error || zapiData?.message || "Z-API request failed",
+        details: zapiData
       });
     }
+
+    console.log("✅ [whatsapp/send] Z-API success:", zapiData.messageId);
 
     // Save outgoing message to Supabase
     if (customerId) {
@@ -105,26 +108,29 @@ export default async function handler(
       const { error: insertErr } = await supabase.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
-        direction: "OUTGOING", // Fixed: must be OUTGOING for DB Enum
+        direction: "OUTGOING", 
         type: dbType,
         content: message || caption || `[${type}]`,
         media_url: imageUrl || audioUrl || documentUrl || null,
         payload: { zapi_message_id: zapiData.messageId },
-        zapi_status: "DELIVERED",
+        zapi_status: "SENT",
       });
 
       if (insertErr) {
-        console.error("❌ Error saving message to Supabase:", insertErr);
-        // We don't return error here because Z-API already sent it, 
-        // but we should know it failed to record.
-      } else {
-        console.log("✅ Message saved to Supabase history");
+        console.error("❌ [whatsapp/send] Supabase error:", insertErr);
+        return res.status(200).json({ 
+          success: true, 
+          warning: "Sent to WhatsApp but failed to save in DB",
+          zapiId: zapiData.messageId 
+        });
       }
+      
+      console.log("✅ [whatsapp/send] Message saved to history");
     }
 
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
-    console.error("❌ WhatsApp send handler error:", err);
+    console.error("🔥 [whatsapp/send] Critical error:", err);
     return res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : "Internal server error",
