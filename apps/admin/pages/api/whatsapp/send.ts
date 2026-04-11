@@ -72,7 +72,7 @@ export default async function handler(
     }
 
     // Call Z-API
-    console.log(`🚀 [whatsapp/send] Sending ${type} to ${normalizedPhone} via Z-API...`);
+    console.log(`🚀 [whatsapp/send] Initing send to ${normalizedPhone} via Z-API...`);
     const zapiRes = await fetch(zapiEndpoint, {
       method: "POST",
       headers: {
@@ -85,7 +85,7 @@ export default async function handler(
     const zapiData = await zapiRes.json();
 
     if (!zapiRes.ok) {
-      console.error("❌ [whatsapp/send] Z-API error:", zapiData);
+      console.error("❌ [whatsapp/send] Z-API Error Response:", zapiData);
       return res.status(zapiRes.status).json({
         success: false,
         error: zapiData?.error || zapiData?.message || "Z-API request failed",
@@ -93,19 +93,16 @@ export default async function handler(
       });
     }
 
-    console.log("✅ [whatsapp/send] Z-API success:", zapiData.messageId);
+    console.log("✅ [whatsapp/send] Z-API Delivery Success:", zapiData.messageId);
 
     // Save outgoing message to Supabase
     if (customerId) {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      );
+      const supabaseObj = createClient();
 
       // Map API type to DB uppercase Enum
       const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
 
-      const { error: insertErr } = await supabase.from("messages").insert({
+      const { error: insertErr } = await supabaseObj.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
         direction: "OUTGOING", 
@@ -117,20 +114,21 @@ export default async function handler(
       });
 
       if (insertErr) {
-        console.error("❌ [whatsapp/send] Supabase error:", insertErr);
+        console.error("❌ [whatsapp/send] Supabase Save Error:", insertErr);
+        // Do not fail the request if Z-API succeeded
         return res.status(200).json({ 
           success: true, 
-          warning: "Sent to WhatsApp but failed to save in DB",
+          warning: "Message sent but failed to record in DB",
           zapiId: zapiData.messageId 
         });
       }
       
-      console.log("✅ [whatsapp/send] Message saved to history");
+      console.log("✅ [whatsapp/send] Persisted to Database");
     }
 
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
-    console.error("🔥 [whatsapp/send] Critical error:", err);
+    console.error("🔥 [whatsapp/send] Fatal API Error:", err);
     return res.status(500).json({
       success: false,
       error: err instanceof Error ? err.message : "Internal server error",

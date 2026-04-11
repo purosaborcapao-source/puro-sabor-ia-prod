@@ -14,7 +14,16 @@ export function createClient(): SupabaseClient<Database> {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set')
+    const errorMsg = 'Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set';
+    
+    // In the browser, we don't want to throw and crash the whole React tree immediately.
+    // We log the error and return a client that will fail on individual calls.
+    if (typeof window !== 'undefined') {
+      console.error(`❌ [supabase] ${errorMsg}`);
+    } else {
+      // On the server, we still want to know early.
+      throw new Error(errorMsg);
+    }
   }
 
   if (cachedClient) return cachedClient

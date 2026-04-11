@@ -35,13 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true
 
     const initAuth = async () => {
-      if (!supabaseClient) {
-        setLoading(false)
-        return
-      }
-
       try {
         console.log('🔐 AuthContext: Iniciando autenticação...')
+
+        // Proteção contra cliente não inicializado
+        if (!supabaseClient || !supabaseClient.auth) {
+          console.warn('⚠️ AuthContext: Supabase client não disponível.')
+          setLoading(false)
+          return
+        }
 
         // Tentar buscar sessão atual
         const { data, error: err } = await supabaseClient.auth.getSession()
@@ -55,15 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.session) {
           setSession(data.session)
           setUser(data.session.user)
-          // Busca o perfil ANTES de desativar o loading se possível, 
-          // ou garante que o loading espere a resposta básica
           await fetchUserProfile(data.session.user.id)
-          setLoading(false)
-        } else {
-          setLoading(false)
         }
       } catch (err) {
-        console.error('🔐 AuthContext: Erro durante autenticação:', err)
+        console.error('🔥 AuthContext: Erro crítico durante autenticação:', err)
+      } finally {
         setLoading(false)
       }
     }
