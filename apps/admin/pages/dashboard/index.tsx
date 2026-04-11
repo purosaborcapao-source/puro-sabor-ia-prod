@@ -2,10 +2,10 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
-import { PendenciasList, usePendencias } from '@/components/Dashboard/PendenciasList'
+import { PendenciasList, usePendencias, Pendencia } from '@/components/Dashboard/PendenciasList'
 import { DayMetrics } from '@/components/Dashboard/DayMetrics'
 import { SchedulingWidget } from '@/components/Dashboard/SchedulingWidget'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 
 interface DayMetricsData {
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
   const basePendencias = usePendencias()
-  const [pendencias, setPendencias] = useState(basePendencias)
+  const [pendencias, setPendencias] = useState<Pendencia[]>(basePendencias)
   const [dayMetrics, setDayMetrics] = useState<DayMetricsData | null>(null)
   const [metricsLoading, setMetricsLoading] = useState(true)
 
@@ -34,9 +34,6 @@ export default function DashboardPage() {
       }
     }
   }, [user, profile, loading, router])
-
-  useEffect(() => {
-    if (!profile) return
 
   const loadPendenciasAndMetrics = useCallback(async () => {
     try {

@@ -1,7 +1,7 @@
 import React from 'react'
 import { MessageCircle, Package, DollarSign, Edit2, AlertCircle } from 'lucide-react'
 
-interface Pendencia {
+export interface Pendencia {
   type:
     | 'mensagens'
     | 'pedidos'
@@ -102,7 +102,7 @@ export function PendenciasList({
 }
 
 export function usePendencias() {
-  return React.useMemo(() => [
+  return React.useMemo<Pendencia[]>(() => [
     {
       type: 'mensagens',
       count: 0,
