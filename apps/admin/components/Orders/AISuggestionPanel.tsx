@@ -34,8 +34,8 @@ export function AISuggestionPanel({ orderId, onSuggestionApplied }: AISuggestion
         .from('order_changes')
         .select('*')
         .eq('order_id', orderId)
-        .eq('status', 'PENDENTE')
-        .eq('is_ai_suggestion', true)
+        .eq('status' as any, 'PENDENTE')
+        .eq('is_ai_suggestion' as any, true)
 
       if (error) throw error
       setSuggestions(data || [])
@@ -49,7 +49,7 @@ export function AISuggestionPanel({ orderId, onSuggestionApplied }: AISuggestion
       // 1. Atualizar status da sugestão
       const { error: updateErr } = await supabase
         .from('order_changes')
-        .update({ status: action })
+        .update({ status: action } as any)
         .eq('id', id)
       
       if (updateErr) throw updateErr
