@@ -37,7 +37,10 @@ export function createClient(): SupabaseClient<Database> {
       persistSession: true,
       detectSessionInUrl: true,
       storageKey: 'puro-sabor-ia-auth-session',
-      flowType: 'pkce'
+      flowType: 'pkce',
+      // Desativa o locking para evitar erro de "another request stole it"
+      // especialmente útil se o app for montado múltiplas vezes
+      lockType: 'null' as any 
     }
   })
   return cachedClient
