@@ -10,15 +10,14 @@ import {
   FileText,
   Zap,
   X,
-  Play,
   Loader2,
   CheckCheck,
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type MessageType = 'text' | 'image' | 'audio' | 'document' | 'video'
-type Direction = 'INCOMING' | 'OUTGOING'
+type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'DOCUMENT' | 'VIDEO'
+type Direction = 'INBOUND' | 'OUTBOUND'
 
 interface Message {
   id: string
@@ -26,8 +25,8 @@ interface Message {
   type: MessageType
   content: string
   media_url?: string | null
-  created_at: string
-  zapi_status?: string
+  created_at: string | null
+  zapi_status?: string | null
   payload?: {
     intent?: string
     confidence?: number
@@ -64,7 +63,7 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
         .eq('customer_id', customerId)
         .order('created_at', { ascending: true })
       if (error) throw error
-      setMessages(data || [])
+      setMessages((data as unknown as Message[]) || [])
     } finally {
       setLoading(false)
     }
@@ -168,7 +167,7 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
     try {
       // Upload to Supabase Storage
       const path = `whatsapp/${customerId}/${Date.now()}_${file.name}`
-      const { data: uploaded, error: uploadErr } = await supabase.storage
+      const { data: _uploaded, error: uploadErr } = await supabase.storage
         .from('media')
         .upload(path, file, { contentType: file.type, upsert: false })
       
@@ -359,7 +358,7 @@ function MessageBubble({
   message: Message
   onUseSuggestion: (s: string) => void
 }) {
-  const isIncoming = message.direction === 'INCOMING'
+  const isIncoming = message.direction === 'INBOUND'
   const hasSuggestion = isIncoming && message.payload?.suggested_response
 
   return (
@@ -373,7 +372,7 @@ function MessageBubble({
         style={{ borderRadius: '2px' }}
       >
         {/* Media rendering */}
-        {message.type === 'image' && message.media_url && (
+        {message.type === 'IMAGE' && message.media_url && (
           <a href={message.media_url} target="_blank" rel="noreferrer" className="block mb-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -385,14 +384,14 @@ function MessageBubble({
           </a>
         )}
 
-        {message.type === 'audio' && message.media_url && (
+        {message.type === 'AUDIO' && message.media_url && (
           <div className="mb-2 flex items-center gap-2">
             <Mic className="w-4 h-4 text-current opacity-60 shrink-0" />
             <audio controls src={message.media_url} className="h-7 w-full" />
           </div>
         )}
 
-        {message.type === 'document' && message.media_url && (
+        {message.type === 'DOCUMENT' && message.media_url && (
           <a
             href={message.media_url}
             target="_blank"
@@ -405,10 +404,10 @@ function MessageBubble({
         )}
 
         {/* Text content */}
-        {(message.type === 'text' || message.type === 'video') && (
+        {(message.type === 'TEXT' || message.type === 'VIDEO') && (
           <p className="whitespace-pre-wrap break-words">{message.content}</p>
         )}
-        {message.type === 'image' && message.content && message.content !== '[Imagem]' && (
+        {message.type === 'IMAGE' && message.content && message.content !== '[Imagem]' && (
           <p className="mt-1 text-[10px] opacity-70 italic">{message.content}</p>
         )}
 
@@ -455,7 +454,7 @@ function MessageBubble({
       {/* Timestamp + status */}
       <div className="flex items-center gap-1.5">
         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
-          {new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+          {message.created_at ? new Date(message.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
         </span>
         {!isIncoming && (
           <CheckCheck

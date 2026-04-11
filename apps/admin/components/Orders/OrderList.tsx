@@ -214,7 +214,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
                 <div className="flex items-center gap-2">
                   {order.number}
                   {order.has_ai_suggestion && (
-                    <Brain className="w-3.5 h-3.5 text-purple-500 animate-pulse" title="Sugestão da IA pendente" />
+                    <span title="Sugestão da IA pendente"><Brain className="w-3.5 h-3.5 text-purple-500 animate-pulse" /></span>
                   )}
                 </div>
               </td>

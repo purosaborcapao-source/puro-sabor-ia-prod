@@ -9,11 +9,6 @@ const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZA
 // Set in .env.local as ZAPI_CLIENT_TOKEN
 const ZAPI_CLIENT_TOKEN = process.env.ZAPI_CLIENT_TOKEN || "";
 
-type SendPayload =
-  | { type: "text"; phone: string; message: string }
-  | { type: "image"; phone: string; imageUrl: string; caption?: string }
-  | { type: "audio"; phone: string; audioUrl: string }
-  | { type: "document"; phone: string; documentUrl: string; fileName: string };
 
 type ApiResponse = {
   success: boolean;

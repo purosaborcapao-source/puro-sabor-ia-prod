@@ -21,8 +21,8 @@ export const PaymentSettings: React.FC = () => {
         .in("key", ["payment_pix_key", "payment_bank_info"]);
       
       data?.forEach(s => {
-        if (s.key === "payment_pix_key") setPixKey(s.value);
-        if (s.key === "payment_bank_info") setBankInfo(s.value);
+        if (s.key === "payment_pix_key") setPixKey(s.value as string);
+        if (s.key === "payment_bank_info") setBankInfo(s.value as string);
       });
     } catch (err) {
       console.error(err);

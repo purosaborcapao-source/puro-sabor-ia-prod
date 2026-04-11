@@ -3,7 +3,7 @@ import { Check, AlertCircle } from 'lucide-react'
 
 interface ConfirmPaymentButtonProps {
   paymentEntryId: string
-  paymentType: 'SINAL' | 'SALDO'
+  paymentType: 'SINAL' | 'SALDO' | 'PARCIAL'
   paymentAmount: number
   onSuccess?: () => void
   disabled?: boolean
@@ -50,7 +50,7 @@ export function ConfirmPaymentButton({
             Confirmar Pagamento
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Confirmar {paymentType === 'SINAL' ? 'sinal' : 'saldo'} no valor de{' '}
+            Confirmar {paymentType === 'SINAL' ? 'sinal' : paymentType === 'PARCIAL' ? 'parcial' : 'saldo'} no valor de{' '}
             <strong>
               {paymentAmount.toLocaleString('pt-BR', {
                 style: 'currency',

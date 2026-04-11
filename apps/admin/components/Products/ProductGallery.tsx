@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 import { ProductCard } from './ProductCard'
-import { Search, Grid, RefreshCcw } from 'lucide-react'
+import { Search, RefreshCcw } from 'lucide-react'
 
 interface Product {
   id: string
@@ -43,7 +43,7 @@ export function ProductGallery({ searchTerm, canEdit = false, onQuickAdd, onRefr
 
       const { data, error } = await query.order('name', { ascending: true })
       if (error) throw error
-      setProducts(data || [])
+      setProducts((data as unknown as Product[]) || [])
     } finally {
       setLoading(false)
     }

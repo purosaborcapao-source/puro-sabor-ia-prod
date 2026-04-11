@@ -10,7 +10,7 @@ export default function ProductsPage() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [_refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
     if (!loading && !user) {

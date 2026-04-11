@@ -16,7 +16,9 @@
       "Bash(npm run:*)",
       "Bash(timeout 15 pnpm dev)",
       "Bash(pnpm dev:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(pnpm --filter @atendimento-ia/admin build)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

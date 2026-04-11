@@ -25,7 +25,7 @@ interface Order {
 export default function CustomerDetailPage() {
   const router = useRouter()
   const { id } = router.query
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile: _profile, loading: authLoading } = useAuth()
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,12 +36,6 @@ export default function CustomerDetailPage() {
     }
   }, [user, authLoading, router])
 
-  useEffect(() => {
-    if (id) {
-      loadCustomerData()
-    }
-  }, [id, loadCustomerData])
-
   const loadCustomerData = useCallback(async () => {
     try {
       setLoading(true)
@@ -50,17 +44,17 @@ export default function CustomerDetailPage() {
       const { data: custData, error: custErr } = await supabase
         .from('customers')
         .select('*')
-        .eq('id', id)
+        .eq('id', id as string)
         .single()
-      
+
       if (custErr) throw custErr
-      setCustomer(custData)
+      setCustomer(custData as unknown as Customer)
 
       // 2. Histórico de Pedidos
       const { data: ordersData, error: ordersErr } = await supabase
         .from('orders')
         .select('id, number, delivery_date, total, status')
-        .eq('customer_id', id)
+        .eq('customer_id', id as string)
         .order('delivery_date', { ascending: false })
       
       if (ordersErr) throw ordersErr
@@ -72,6 +66,12 @@ export default function CustomerDetailPage() {
       setLoading(false)
     }
   }, [id])
+
+  useEffect(() => {
+    if (id) {
+      loadCustomerData()
+    }
+  }, [id, loadCustomerData])
 
   if (loading || authLoading || !customer) {
     return <div className="p-8 text-center text-gray-500 uppercase font-black text-[10px] tracking-widest">Acessando registros...</div>

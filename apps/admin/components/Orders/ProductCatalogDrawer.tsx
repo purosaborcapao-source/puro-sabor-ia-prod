@@ -8,20 +8,9 @@ interface ProductCatalogDrawerProps {
   onAddItem: (productId: string, price: number) => Promise<void>
 }
 
-export function ProductCatalogDrawer({ isOpen, onClose, onAddItem }: ProductCatalogDrawerProps) {
+export function ProductCatalogDrawer({ isOpen, onClose, onAddItem: _onAddItem }: ProductCatalogDrawerProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [addingId, setAddingId] = useState<string | null>(null)
-
   if (!isOpen) return null
-
-  const handleQuickAdd = async (productId: string, price: number) => {
-    setAddingId(productId)
-    try {
-      await onAddItem(productId, price)
-    } finally {
-      setAddingId(null)
-    }
-  }
 
   return (
     <>

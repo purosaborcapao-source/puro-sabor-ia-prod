@@ -35,7 +35,7 @@ export function GeneralSettings({ canEdit = false }: GeneralSettingsProps) {
     defaultValues: {
       bakery_name: '',
       bakery_phone: '',
-      opening_hours: defaultHours,
+      opening_hours: undefined,
       min_lead_time_hours: 24,
       max_orders_day: 50,
       ai_prompt: ''
@@ -61,7 +61,7 @@ export function GeneralSettings({ canEdit = false }: GeneralSettingsProps) {
           reset({
             bakery_name: settingsMap.bakery_name || '',
             bakery_phone: settingsMap.bakery_phone || '',
-            opening_hours: settingsMap.opening_hours || defaultHours,
+            opening_hours: settingsMap.opening_hours || undefined,
             min_lead_time_hours: settingsMap.min_lead_time_hours || 24,
             max_orders_day: settingsMap.max_orders_day || 50,
             ai_prompt: settingsMap.ai_prompt || ''
@@ -87,7 +87,7 @@ export function GeneralSettings({ canEdit = false }: GeneralSettingsProps) {
       const settingsToSave = [
         { key: 'bakery_name', value: data.bakery_name },
         { key: 'bakery_phone', value: data.bakery_phone },
-        { key: 'opening_hours', value: data.opening_hours || defaultHours },
+        { key: 'opening_hours', value: (data.opening_hours || null) as unknown as string },
         { key: 'min_lead_time_hours', value: data.min_lead_time_hours },
         { key: 'max_orders_day', value: data.max_orders_day },
         { key: 'ai_prompt', value: data.ai_prompt || null }

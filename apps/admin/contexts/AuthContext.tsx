@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true
-    let timeoutId: NodeJS.Timeout | null = null
 
     const initAuth = async () => {
       if (!supabaseClient) {

@@ -20,7 +20,7 @@ export const AISettings: React.FC = () => {
         .eq("key", "ai_system_prompt")
         .single();
       
-      if (data) setSystemPrompt(data.value);
+      if (data) setSystemPrompt(data.value as string);
     } catch (err) {
       console.error(err);
     } finally {
@@ -60,7 +60,7 @@ export const AISettings: React.FC = () => {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             System Prompt (Instruções Principais)
-            <HelpCircle className="w-4 h-4 text-gray-400" title="Estas são as regras que a IA deve seguir." />
+            <span title="Estas são as regras que a IA deve seguir."><HelpCircle className="w-4 h-4 text-gray-400" /></span>
           </label>
           <textarea
             value={systemPrompt}
