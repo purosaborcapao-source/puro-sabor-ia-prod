@@ -91,28 +91,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('🔐 AuthContext: Configurando onAuthStateChange...')
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
-        console.log(`🔐 AuthContext: Evento de Auth alterado: ${event}`)
-        if (!isMounted) return
+        console.log(`🔐 AuthContext: Evento de Auth recebido: ${event}`)
+        console.log(`🔐 AuthContext: Sessão presente: ${!!session}`)
+        console.log(`🔐 AuthContext: User presente: ${!!session?.user}`)
+        
+        if (!isMounted) {
+          console.warn('🔐 AuthContext: Evento ignorado (componente desmontado).')
+          return
+        }
         
         setSession(session)
         if (session?.user) {
           setUser(session.user)
-          fetchUserProfile(session.user.id) // Non-blocking
+          console.log(`🔐 AuthContext: Disparando busca de perfil para ${session.user.id}`)
+          fetchUserProfile(session.user.id)
         } else {
           setUser(null)
           setProfile(null)
         }
         
-        setTimeout(() => {
-          if (isMounted) {
-            setLoading(false)
-            setError(null)
-          }
-        }, 100)
+        // Destrava a UI imediatamente em qualquer evento
+        console.log('🔐 AuthContext: Destravando UI (loading -> false)')
+        setLoading(false)
+        setError(null)
       }
     )
 
     return () => {
+      console.log('🔐 AuthContext: Limpando listener e timeout...')
       isMounted = false
       if (timeoutId) clearTimeout(timeoutId)
       authListener?.subscription.unsubscribe()
