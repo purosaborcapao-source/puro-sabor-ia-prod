@@ -57,6 +57,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, refreshKey]);
 
   const loadData = async () => {

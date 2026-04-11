@@ -25,6 +25,7 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
 
   useEffect(() => {
     loadItems()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId, refreshKey])
 
   const loadItems = async () => {

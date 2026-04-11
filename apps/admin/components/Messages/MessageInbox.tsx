@@ -98,6 +98,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCustomerId]);
 
   // Carregar chats ao montar

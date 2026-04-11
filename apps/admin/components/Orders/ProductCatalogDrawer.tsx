@@ -86,7 +86,7 @@ export function ProductCatalogDrawer({ isOpen, onClose, onAddItem }: ProductCata
            <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-900/30 rounded-xl text-blue-700 dark:text-blue-400">
               <Package className="w-5 h-5" />
               <p className="text-[10px] font-bold uppercase tracking-tight">
-                Clique no "+" de qualquer produto para adicionar 1 unidade ao pedido ativo.
+                Clique no &quot;+&quot; de qualquer produto para adicionar 1 unidade ao pedido ativo.
               </p>
            </div>
         </div>

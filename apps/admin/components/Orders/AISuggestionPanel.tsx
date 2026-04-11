@@ -24,6 +24,7 @@ export function AISuggestionPanel({ orderId, onSuggestionApplied }: AISuggestion
 
   useEffect(() => {
     loadSuggestions()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId])
 
   const loadSuggestions = async () => {

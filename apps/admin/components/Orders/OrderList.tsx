@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { supabase } from '@atendimento-ia/supabase'
 import { PaymentStatusBadge } from './PaymentStatusBadge'
 import { useAuth } from '@/contexts/AuthContext'
-import { ChevronRight, AlertCircle } from 'lucide-react'
+import { ChevronRight, AlertCircle, Brain } from 'lucide-react'
 
 interface Order {
   id: string
@@ -136,6 +136,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
     } finally {
       setLoading(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.status, filters.paymentStatus, filters.date, filters.search])
 
   useEffect(() => {

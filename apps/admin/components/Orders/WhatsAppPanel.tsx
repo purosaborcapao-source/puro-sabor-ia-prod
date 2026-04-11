@@ -6,7 +6,7 @@ import {
   Send,
   Paperclip,
   Mic,
-  Image,
+  Image as ImageIcon,
   FileText,
   Zap,
   X,
@@ -274,7 +274,7 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
             className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 border border-blue-500/30 hover:bg-blue-500/10 transition-all"
             style={{ borderRadius: '1px' }}
           >
-            <Image className="w-3 h-3" /> Imagem
+            <ImageIcon className="w-3 h-3" /> Imagem
           </button>
           <button
             onClick={() => { if (fileRef.current) { fileRef.current.accept = '*/*'; fileRef.current.click() } }}

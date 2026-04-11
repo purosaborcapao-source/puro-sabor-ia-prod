@@ -53,7 +53,7 @@ export const AISettings: React.FC = () => {
           <Bot className="w-5 h-5 text-purple-500" />
           Configurações da IA (Claude)
         </h3>
-        <p className="text-sm text-gray-500">Ajuste o comportamento do "Cérebro" que atende seus clientes.</p>
+        <p className="text-sm text-gray-500">Ajuste o comportamento do &quot;Cérebro&quot; que atende seus clientes.</p>
       </div>
 
       <div className="space-y-4 max-w-4xl">

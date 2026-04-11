@@ -134,7 +134,7 @@ export default function DashboardPage() {
     }
 
     loadPendenciasAndMetrics()
-  }, [])
+  }, [profile, basePendencias])
 
   if (loading || metricsLoading) {
     return (
@@ -167,7 +167,7 @@ export default function DashboardPage() {
               </h1>
             </div>
             <div className="text-[10px] sm:text-xs font-bold tracking-widest text-gray-400 uppercase">
-              Opr: {profile?.name || 'Vazio'} <span className="hidden sm:inline">// {new Date().toISOString().split('T')[0]}</span>
+              Opr: {profile?.name || 'Vazio'} <span className="hidden sm:inline">{'//'} {new Date().toISOString().split('T')[0]}</span>
             </div>
           </div>
         </header>

@@ -69,6 +69,7 @@ export default function SchedulingPage() {
 
   useEffect(() => {
     fetchSlots();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
 
   const handleBlockSlot = async () => {

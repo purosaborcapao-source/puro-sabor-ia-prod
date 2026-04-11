@@ -54,6 +54,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     return () => {
       subscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   // Scroll ao atualizar mensagens

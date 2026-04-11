@@ -19,6 +19,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
     if (customerId) {
       loadCustomerOrders();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
   const loadCustomerOrders = async () => {

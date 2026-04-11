@@ -82,6 +82,7 @@ export function ProductCard({ product, canEdit, onQuickAdd, onRefresh }: Product
       {/* Imagem do Produto com Overlay Glassmorphism */}
       <div className="relative h-48 sm:h-56 bg-gray-100 dark:bg-gray-900 overflow-hidden">
         {product.image_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img 
             src={product.image_url} 
             alt={product.name}

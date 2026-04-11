@@ -25,16 +25,6 @@ export function GeneralSettings({ canEdit = false }: GeneralSettingsProps) {
   const [success, setSuccess] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  const defaultHours = {
-    seg: '08:00-18:00',
-    ter: '08:00-18:00',
-    qua: '08:00-18:00',
-    qui: '08:00-18:00',
-    sex: '08:00-18:00',
-    sab: '08:00-14:00',
-    dom: 'Fechado'
-  }
-
   const {
     register,
     handleSubmit,

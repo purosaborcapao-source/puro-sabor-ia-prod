@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 import Link from 'next/link'
 import { ArrowLeftIcon, Phone, Calendar, ShoppingBag, MessageCircle } from 'lucide-react'
@@ -40,9 +40,9 @@ export default function CustomerDetailPage() {
     if (id) {
       loadCustomerData()
     }
-  }, [id])
+  }, [id, loadCustomerData])
 
-  const loadCustomerData = async () => {
+  const loadCustomerData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -71,7 +71,7 @@ export default function CustomerDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   if (loading || authLoading || !customer) {
     return <div className="p-8 text-center text-gray-500 uppercase font-black text-[10px] tracking-widest">Acessando registros...</div>
@@ -182,7 +182,7 @@ export default function CustomerDetailPage() {
                       <MessageCircle className="w-3 h-3 text-blue-500" /> Notas de Atendimento
                     </h3>
                     <p className="text-xs text-gray-500 font-medium leading-relaxed italic">
-                      "Cliente prefere contato após as 14h. Gosta de embalagens premium para presentes."
+                      &quot;Cliente prefere contato após as 14h. Gosta de embalagens premium para presentes.&quot;
                     </p>
                  </div>
               </div>
