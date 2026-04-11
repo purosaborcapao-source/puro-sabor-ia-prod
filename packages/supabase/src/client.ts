@@ -31,19 +31,17 @@ export function createClient(): SupabaseClient<Database> {
   }
 
   if (cachedClient) return cachedClient
+  // @ts-ignore - Contornando conflito de tipos entre versões do supabase-js no monorepo
   cachedClient = createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
       storageKey: 'puro-sabor-ia-auth-session',
-      flowType: 'pkce',
-      // Desativa o locking para evitar erro de "another request stole it"
-      // especialmente útil se o app for montado múltiplas vezes
-      lockType: 'null' as any 
+      flowType: 'pkce'
     }
-  })
-  return cachedClient
+  }) as any
+  return cachedClient as any
 }
 
 // Lazy proxy — importing this module never throws; the error surfaces only
