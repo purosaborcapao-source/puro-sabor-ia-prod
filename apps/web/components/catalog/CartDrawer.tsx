@@ -81,7 +81,11 @@ export function CartDrawer({
 
                 <div className="flex justify-end pt-2 border-t border-orange-50">
                    <span className="text-xs font-black text-[var(--primary-paprica)]">
-                      {((item.sale_unit === 'KG' ? (item.price * item.quantity / 1000) : item.price * item.quantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      {(
+                        item.sale_unit === 'KG' ? (item.price * item.quantity / 1000) :
+                        item.sale_unit === 'CENTO' ? (item.price * item.quantity / 100) :
+                        (item.price * item.quantity)
+                      ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                    </span>
                 </div>
               </div>

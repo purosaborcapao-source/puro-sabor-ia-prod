@@ -18,6 +18,7 @@
     "@atendimento-ia/shared": "*",
     "@atendimento-ia/supabase": "*",
     "@atendimento-ia/ai": "*",
+    "lucide-react": "^0.344.0",
     "tailwindcss": "^3.4.0",
     "clsx": "^2.0.0"
   },
