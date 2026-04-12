@@ -10,14 +10,12 @@ export function CategoryTabs({ categories, activeCategory, onSelectCategory }: C
   // Mapeamento de nomes amigáveis
   const formatCategoryName = (cat: string) => {
     const maps: Record<string, string> = {
-      'tortas': '🎂 Tortas',
-      'salgados': '🥐 Salgados',
-      'doces': '🧁 Doces',
-      'geral': '✨ Geral',
-      'bolos': '🍰 Bolos',
-      'cupcakes': '🧁 Cupcakes'
+      'tortas': '🎂 tortas',
+      'tortas frias': '❄️ tortas frias',
+      'docinhos': '🧁 docinhos',
+      'salgadinhos': '🥐 salgadinhos'
     };
-    return maps[cat.toLowerCase()] || cat.charAt(0).toUpperCase() + cat.slice(1);
+    return maps[cat.toLowerCase()] || cat.toLowerCase();
   };
 
   return (
