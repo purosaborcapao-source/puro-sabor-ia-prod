@@ -25,6 +25,7 @@ interface Order {
   sinal_valor: number;
   sinal_confirmado: boolean;
   conta_corrente?: boolean;
+  notes?: string;
   created_at: string | null;
 }
 
@@ -92,6 +93,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         sinal_valor: (orderData as any).sinal_valor || 0,
         sinal_confirmado: (orderData as any).sinal_confirmado || false,
         conta_corrente: (orderData as any).conta_corrente || false,
+        notes: orderData.notes || '',
         created_at: orderData.created_at
       };
 
@@ -282,6 +284,14 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
                     {order.status}
                   </span>
                 </div>
+                {order.notes && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Notas / Horário</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-100">
+                      {order.notes}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -346,13 +356,33 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">💳 Gerenciar Pagamentos</h3>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              disabled={order.payment_status === 'QUITADO'}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            >
-              Registrar Recebimento
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  if (confirm(`Confirmar recebimento direto de ${saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}?`)) {
+                    await supabase.from('payment_entries').insert({
+                      order_id: orderId,
+                      type: 'SINAL', // By default treat it as Sinal/Saldo
+                      valor: saldoDue,
+                      status: 'CONFIRMADO',
+                      method: 'PIX'
+                    });
+                    setRefreshKey(k => k + 1);
+                  }
+                }}
+                disabled={order.payment_status === 'QUITADO' || saldoDue === 0}
+                className="px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold uppercase tracking-widest shadow-sm"
+              >
+                + Baixar {saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </button>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                disabled={order.payment_status === 'QUITADO'}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-xs font-bold uppercase tracking-widest shadow-sm"
+              >
+                Outro Valor
+              </button>
+            </div>
           </div>
           <div className="space-y-3">
             {paymentEntries.map((payment) => (

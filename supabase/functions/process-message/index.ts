@@ -109,6 +109,12 @@ REGRAS DE EXTRAÇÃO:
       const dateMatch = text.match(/Data da Encomenda:\s*(.+)/);
       const timeMatch = text.match(/Horário:\s*(.+)/);
       
+      const totalMatch = text.match(/Total:\s*R\$\s*([\d.,]+)/);
+      let orderTotal = 0;
+      if (totalMatch) {
+         orderTotal = parseFloat(totalMatch[1].replace(/\./g, '').replace(',', '.'));
+      }
+
       const productLines = text.split('\n').filter(l => l.trim().startsWith('•'));
       const items = productLines.map(line => {
         let qtyStr = "1";
@@ -116,26 +122,31 @@ REGRAS DE EXTRAÇÃO:
         if (matchQty) {
           qtyStr = matchQty[1].replace(',', '.');
         }
-        let quantity = parseFloat(qtyStr);
-        if (line.includes('kg') || line.includes('g')) {
-           // just keep number, we rely on product price per kg
-        }
+        let quantity = parseFloat(qtyStr) || 1;
 
-        const matchedProduct = products?.find(p => line.toLowerCase().includes(p.name.toLowerCase()));
+        const cleanLine = line.toLowerCase();
+        const matchedProduct = products?.find(p => cleanLine.includes(p.name.toLowerCase().trim()));
         
         return {
           product_id: matchedProduct?.id,
           product: matchedProduct?.name || line.replace(/•\s*([\d.,]+)(x|g|kg)?/g, '').trim(),
-          quantity: quantity || 1,
+          quantity: quantity,
+          price: matchedProduct?.price || 0,
           observation: line.trim()
         };
       });
+
+      // If total was not found via regex, calculate from matched prices
+      if (orderTotal === 0 && items.length > 0) {
+         orderTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      }
 
       parsed = {
         intent: "NEW_ORDER",
         confidence: 1.0,
         extracted_data: {
           items,
+          total: orderTotal,
           delivery_date: dateMatch ? dateMatch[1].trim() : null,
           delivery_time: timeMatch ? timeMatch[1].trim() : null
         },
@@ -335,7 +346,7 @@ async function createDraftOrder(
         status: "PENDENTE",
         payment_status: "SINAL_PENDENTE",
         notes: orderNotes,
-        total: 0, 
+        total: extractedData?.total || 0, 
       })
       .select()
       .single();
@@ -353,8 +364,11 @@ async function createDraftOrder(
              order_id: order.id,
              product_id: item.product_id,
              quantity: item.quantity,
+             price_at_time: item.price,
              customizations: { notes: item.observation }
            });
+         } else {
+             console.warn(`⚠️ Produto não encontrado no DB para a linha: ${item.observation}`);
          }
       }
       if (orderItems.length > 0) {
