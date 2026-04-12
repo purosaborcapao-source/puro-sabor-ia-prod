@@ -33,7 +33,7 @@
   }
 
   .glass-header {
-    @apply sticky top-0 z-50 bg-[var(--bg-creme)]/80 backdrop-blur-md border-b border-orange-100;
+    @apply sticky top-0 z-50 bg-[#FDF6EC]/80 backdrop-blur-md border-b border-orange-100;
   }
 
   /* Hide scrollbar but keep functionality */
