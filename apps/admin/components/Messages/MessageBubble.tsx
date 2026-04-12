@@ -48,11 +48,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               onClick={() => window.open(message.media_url, "_blank")}
             />
             {message.content && message.content !== "[Imagem]" && (
-              <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90">{message.content}</p>
+              <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
             )}
           </div>
         ) : (
-          <p className="text-[14px] leading-relaxed break-words">{message.content}</p>
+          <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
         )}
 
         <div className="flex items-center justify-between gap-4 mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/50">

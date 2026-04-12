@@ -58,7 +58,7 @@ export async function handleProcessMessage(request: Request): Promise<Response> 
     // 3. Buscar catálago de produtos ativos
     const { data: products, error: productsError } = await supabase
       .from("products")
-      .select("name, price, category")
+      .select("id, name, price, category")
       .eq("is_active", true);
 
     if (productsError) {
@@ -99,24 +99,69 @@ REGRAS DE EXTRAÇÃO:
 
     const aiPrompt = settings?.value ? String(settings.value) : basePrompt;
 
-    // 5. Chamar Claude API
-    console.log("🔄 [process-message] Chamando Claude API...");
+    // 5. Mapeamento Direto (Zero-AI) vs Claude API
+    const isWebAppOrder = text.startsWith("Olá! Gostaria de fazer um pedido:");
+    let parsed: any;
 
-    const claudeResponse = await callClaudeAPI(
-      aiPrompt,
-      text,
-      customer.name,
-      recentMessages || []
-    );
+    if (isWebAppOrder) {
+      console.log("🛒 [process-message] Detectado pedido do Web App! Processamento Zero-AI.");
+      
+      const dateMatch = text.match(/Data da Encomenda:\s*(.+)/);
+      const timeMatch = text.match(/Horário:\s*(.+)/);
+      
+      const productLines = text.split('\n').filter(l => l.trim().startsWith('•'));
+      const items = productLines.map(line => {
+        let qtyStr = "1";
+        const matchQty = line.match(/•\s*([\d.,]+)(x|g|kg)?/);
+        if (matchQty) {
+          qtyStr = matchQty[1].replace(',', '.');
+        }
+        let quantity = parseFloat(qtyStr);
+        if (line.includes('kg') || line.includes('g')) {
+           // just keep number, we rely on product price per kg
+        }
 
-    // 6. Parse resposta do Claude
-    const parsed = parseClaudeResponse(claudeResponse, "GENERAL_CHAT");
+        const matchedProduct = products?.find(p => line.toLowerCase().includes(p.name.toLowerCase()));
+        
+        return {
+          product_id: matchedProduct?.id,
+          product: matchedProduct?.name || line.replace(/•\s*([\d.,]+)(x|g|kg)?/g, '').trim(),
+          quantity: quantity || 1,
+          observation: line.trim()
+        };
+      });
 
-    console.log("✅ Resposta processada:", {
-      intent: parsed.intent,
-      confidence: parsed.confidence,
-      itemsFound: (parsed.extracted_data?.items as any[])?.length || 0,
-    });
+      parsed = {
+        intent: "NEW_ORDER",
+        confidence: 1.0,
+        extracted_data: {
+          items,
+          delivery_date: dateMatch ? dateMatch[1].trim() : null,
+          delivery_time: timeMatch ? timeMatch[1].trim() : null
+        },
+        suggested_response: "Recebemos seu pedido pelo catálogo Web! Nossa equipe já está revisando as informações e confirmará em breve.",
+        should_escalate: true
+      };
+
+      console.log("✅ Resposta processada estruturalmente:", { itemsFound: items.length });
+    } else {
+      console.log("🔄 [process-message] Chamando Claude API...");
+
+      const claudeResponse = await callClaudeAPI(
+        aiPrompt,
+        text,
+        customer.name,
+        recentMessages || []
+      );
+
+      parsed = parseClaudeResponse(claudeResponse, "GENERAL_CHAT");
+
+      console.log("✅ Resposta processada pela IA:", {
+        intent: parsed.intent,
+        confidence: parsed.confidence,
+        itemsFound: (parsed.extracted_data?.items as any[])?.length || 0,
+      });
+    }
 
     // 7. Atualizar message com payload processado
     const messagePayload: MessagePayload = {
@@ -139,9 +184,10 @@ REGRAS DE EXTRAÇÃO:
       console.error("❌ Erro ao atualizar message:", updateError);
     }
 
-    // 7. Se for NEW_ORDER, criar rascunho de pedido
+    // 8. Se for NEW_ORDER, criar rascunho de pedido
     if (parsed.intent === "NEW_ORDER" && parsed.confidence > 0.8) {
       console.log("🚀 [process-message] Criando rascunho de pedido...");
+      // For web app orders, mark as PENDENTE (requires manual approval of the draft still? No wait, if matched all IDs, it could be PENDENTE. We keep it as RASCUNHO_IA so they review).
       await createDraftOrder(supabase, customer_id, parsed.extracted_data);
     }
 
@@ -274,28 +320,65 @@ async function createDraftOrder(
   try {
     const orderNumber = `IA-${Date.now().toString().slice(-6)}`;
     
-    // 1. Criar o pedido com status RASCUNHO_IA
+    const orderNotes = extractedData?.delivery_time 
+       ? `Horário de Retirada/Entrega: ${extractedData.delivery_time}\nCriado via WhatsApp.`
+       : `Criado automaticamente via WhatsApp.`;
+
+    // 1. Criar o pedido
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         number: orderNumber,
         customer_id: customerId,
-        delivery_date: extractedData?.delivery_date || null,
+        delivery_date: extractedData?.delivery_date ? convertToDbDate(extractedData.delivery_date) : null,
         status: "RASCUNHO_IA",
         payment_status: "SINAL_PENDENTE",
-        notes: `Criado automaticamente via WhatsApp IA. Itens detectados: ${JSON.stringify(extractedData?.items || [])}`,
-        total: 0, // Será calculado quando os itens forem confirmados
+        notes: orderNotes,
+        total: 0, 
       })
       .select()
       .single();
 
     if (orderError) throw orderError;
 
-    // 2. Se houver itens, tentar associá-los (opcional, como nota por enquanto para evitar erros de ID)
     console.log(`✅ Rascunho de pedido criado: ${order.number}`);
+
+    // 2. Criar os order_items se viermos com IDs e calcular Total
+    if (extractedData?.items && Array.isArray(extractedData.items)) {
+      const orderItems = [];
+      for (const item of extractedData.items) {
+         if (item.product_id) {
+           orderItems.push({
+             order_id: order.id,
+             product_id: item.product_id,
+             quantity: item.quantity,
+             customizations: { notes: item.observation }
+           });
+         }
+      }
+      if (orderItems.length > 0) {
+        const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+        if (itemsError) {
+          console.error("❌ Erro ao criar order_items:", itemsError);
+        } else {
+          console.log(`✅ ${orderItems.length} order_items associados.`);
+        }
+      }
+    }
   } catch (err) {
     console.error("❌ Erro ao criar rascunho de pedido:", err);
   }
+}
+
+function convertToDbDate(dateStr: string) {
+  // Try to convert DD/MM/YYYY to YYYY-MM-DD
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  return dateStr;
 }
 
 async function triggerNotification(

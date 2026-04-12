@@ -13,7 +13,7 @@ interface CartDrawerProps {
   onCheckout: () => void;
 }
 
-function buildWhatsAppMessage(items: CartItem[], total: number): string {
+function buildWhatsAppMessage(items: CartItem[], total: number, date: string, time: string): string {
   const lines = items.map((item) => {
     const qty =
       item.sale_unit === 'KG'
@@ -26,12 +26,24 @@ function buildWhatsAppMessage(items: CartItem[], total: number): string {
     return `• ${qty} ${item.name}${flavor}${notes}`;
   });
 
+  const sinal = total * 0.5;
   const totalFormatted = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const sinalFormatted = sinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  
+  let dateFormatted = date;
+  if (date.includes('-')) {
+    const [year, month, day] = date.split('-');
+    dateFormatted = `${day}/${month}/${year}`;
+  }
 
   return (
     `Olá! Gostaria de fazer um pedido:\n\n` +
+    `📅 Data da Encomenda: ${dateFormatted}\n` +
+    `⏰ Horário: ${time}\n\n` +
     lines.join('\n') +
-    `\n\nTotal: ${totalFormatted}\n\nAguardo confirmação! 🍰`
+    `\n\nTotal: ${totalFormatted}\n` +
+    `Sinal sugerido (50%): ${sinalFormatted}\n\n` +
+    `Aguardo confirmação! 🍰`
   );
 }
 
@@ -42,10 +54,19 @@ export function CartDrawer({
   onRemoveItem,
   total,
 }: CartDrawerProps) {
+  const [date, setDate] = React.useState('');
+  const [time, setTime] = React.useState('');
+  const [error, setError] = React.useState('');
+
   if (!isOpen) return null;
 
   const handleWhatsApp = () => {
-    const message = buildWhatsAppMessage(items, total);
+    if (!date || !time) {
+      setError('Por favor, preencha a data e hora da encomenda antes de prosseguir.');
+      return;
+    }
+    setError('');
+    const message = buildWhatsAppMessage(items, total, date, time);
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
@@ -126,10 +147,39 @@ export function CartDrawer({
         {/* Footer */}
         {items.length > 0 && (
           <div className="p-6 bg-white border-t border-orange-50 space-y-4 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.05)]">
+            <div className="space-y-3 mb-4">
+              <h4 className="text-xs font-bold text-gray-800 uppercase tracking-widest">Informações da Encomenda</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Data</label>
+                  <input 
+                    type="date" 
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full text-sm p-2 border border-orange-100 rounded-xl bg-orange-50/30 focus:outline-none focus:ring-2 focus:ring-orange-200 text-gray-700 font-medium"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-bold text-gray-500">Hora</label>
+                  <input 
+                    type="time" 
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                    className="w-full text-sm p-2 border border-orange-100 rounded-xl bg-orange-50/30 focus:outline-none focus:ring-2 focus:ring-orange-200 text-gray-700 font-medium"
+                  />
+                </div>
+              </div>
+              {error && <p className="text-[10px] text-red-500 font-bold animate-in fade-in">{error}</p>}
+            </div>
+
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-widest">
                 <span>Total</span>
                 <span>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+              <div className="flex justify-between items-center text-[10px] font-bold text-orange-400 uppercase tracking-widest">
+                <span>Sinal (50%)</span>
+                <span>{(total * 0.5).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             </div>
 
