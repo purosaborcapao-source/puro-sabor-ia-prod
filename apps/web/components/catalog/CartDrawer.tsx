@@ -10,8 +10,7 @@ interface CartDrawerProps {
   items: CartItem[];
   onRemoveItem: (id: string) => void;
   total: number;
-  sinalValor: number;
-  onCheckout: () => void; // mantido por compatibilidade, não usado
+  onCheckout: () => void;
 }
 
 function buildWhatsAppMessage(items: CartItem[], total: number): string {
@@ -42,7 +41,6 @@ export function CartDrawer({
   items,
   onRemoveItem,
   total,
-  sinalValor,
 }: CartDrawerProps) {
   if (!isOpen) return null;
 
@@ -154,10 +152,4 @@ export function CartDrawer({
   );
 }
 
-function CheckBadge() {
-  return (
-    <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-      <div className="text-white text-[10px] font-black">30%</div>
-    </div>
-  );
-}
+

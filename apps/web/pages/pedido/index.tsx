@@ -64,7 +64,7 @@ export default function PedidoPage() {
           <CategoryTabs
             categories={Object.keys(productsByCategory || {})}
             activeCategory={activeCategory}
-            onSelect={setActiveCategory}
+            onSelectCategory={setActiveCategory}
           />
         )}
 
@@ -108,7 +108,6 @@ export default function PedidoPage() {
         items={items}
         onRemoveItem={removeItem}
         total={total}
-        sinalValor={0}
         onCheckout={() => {}}
       />
     </div>
