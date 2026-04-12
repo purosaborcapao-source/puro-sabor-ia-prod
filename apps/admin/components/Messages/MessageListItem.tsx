@@ -9,7 +9,7 @@ interface MessageChat {
   last_message: string;
   last_message_time: string;
   unread_count: number;
-  direction: "INCOMING" | "OUTGOING" | "INBOUND" | "OUTBOUND";
+  direction: "INBOUND" | "OUTBOUND";
   status?: "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED";
   last_inbound_at?: string | null;
 }

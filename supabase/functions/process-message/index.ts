@@ -202,11 +202,9 @@ async function callClaudeAPI(
   }
 
   // Construir contexto com mensagens anteriores
-  const messageHistory = recentMessages
-    .reverse()
     .map(
       (msg) =>
-        `${msg.direction === "INCOMING" ? "Cliente" : "Bot"}: ${msg.content}`
+        `${msg.direction === "INBOUND" ? "Cliente" : "Bot"}: ${msg.content}`
     )
     .join("\n");
 

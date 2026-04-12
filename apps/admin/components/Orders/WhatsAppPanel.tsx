@@ -17,7 +17,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type MessageType = 'TEXT' | 'IMAGE' | 'AUDIO' | 'DOCUMENT' | 'VIDEO'
-type Direction = 'INCOMING' | 'OUTGOING'
+type Direction = 'INBOUND' | 'OUTBOUND'
 
 interface Message {
   id: string
@@ -358,7 +358,7 @@ function MessageBubble({
   message: Message
   onUseSuggestion: (s: string) => void
 }) {
-  const isIncoming = message.direction === 'INCOMING'
+  const isIncoming = message.direction === 'INBOUND'
   const hasSuggestion = isIncoming && message.payload?.suggested_response
 
   return (

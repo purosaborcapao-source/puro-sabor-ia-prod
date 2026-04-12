@@ -27,7 +27,7 @@ async function seedData() {
     {
       customer_id: customers[0].id,
       phone: customers[0].phone,
-      direction: 'INCOMING',
+      direction: 'INBOUND',
       content: 'Oi, gostaria de encomendar um bolo de chocolate para sábado às 15h.',
       payload: {
         intent: 'NEW_ORDER',
@@ -41,13 +41,13 @@ async function seedData() {
     {
       customer_id: customers[0].id,
       phone: customers[0].phone,
-      direction: 'OUTGOING',
+      direction: 'OUTBOUND',
       content: 'Olá João! Com certeza, temos disponibilidade. O valor fica R$ 85,00. Posso confirmar?',
     },
     {
       customer_id: customers[1].id,
       phone: customers[1].phone,
-      direction: 'INCOMING',
+      direction: 'INBOUND',
       content: 'Preciso de 50 coxinhas e 20 brigadeiros para hoje!',
       payload: {
         intent: 'NEW_ORDER',
