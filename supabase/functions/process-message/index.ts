@@ -332,7 +332,7 @@ async function createDraftOrder(
         number: orderNumber,
         customer_id: customerId,
         delivery_date: extractedData?.delivery_date ? convertToDbDate(extractedData.delivery_date) : null,
-        status: "RASCUNHO_IA",
+        status: "PENDENTE",
         payment_status: "SINAL_PENDENTE",
         notes: orderNotes,
         total: 0, 
