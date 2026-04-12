@@ -26,9 +26,13 @@ function buildWhatsAppMessage(items: CartItem[], total: number, date: string, ti
     return `• ${qty} ${item.name}${flavor}${notes}`;
   });
 
-  const sinal = total * 0.5;
+  const targetSinal = total * 0.30;
+  const remainder = targetSinal % 50;
+  let finalSinal = remainder < 40 ? targetSinal - remainder : targetSinal - remainder + 50;
+  if (finalSinal === 0 && total > 0) finalSinal = 50;
+
   const totalFormatted = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const sinalFormatted = sinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const sinalFormatted = finalSinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   
   let dateFormatted = date;
   if (date.includes('-')) {
@@ -42,7 +46,7 @@ function buildWhatsAppMessage(items: CartItem[], total: number, date: string, ti
     `⏰ Horário: ${time}\n\n` +
     lines.join('\n') +
     `\n\nTotal: ${totalFormatted}\n` +
-    `Sinal sugerido (50%): ${sinalFormatted}\n\n` +
+    `Sinal sugerido (~30%): ${sinalFormatted}\n\n` +
     `Aguardo confirmação! 🍰`
   );
 }
@@ -70,6 +74,11 @@ export function CartDrawer({
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   };
+
+  const targetSinal = total * 0.30;
+  const remainder = targetSinal % 50;
+  let finalSinal = remainder < 40 ? targetSinal - remainder : targetSinal - remainder + 50;
+  if (finalSinal === 0 && total > 0) finalSinal = 50;
 
   return (
     <div className="fixed inset-0 z-[110] flex justify-end animate-in fade-in duration-300">
@@ -178,8 +187,8 @@ export function CartDrawer({
                 <span>{total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
               <div className="flex justify-between items-center text-[10px] font-bold text-orange-400 uppercase tracking-widest">
-                <span>Sinal (50%)</span>
-                <span>{(total * 0.5).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span>Sinal Sugerido (~30%)</span>
+                <span>{finalSinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             </div>
 
