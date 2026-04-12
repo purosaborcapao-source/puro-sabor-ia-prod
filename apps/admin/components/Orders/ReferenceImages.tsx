@@ -56,7 +56,8 @@ export function ReferenceImages({ orderId, customerId }: ReferenceImagesProps) {
     if (images.includes(url)) return;
     const next = [...images, url];
     setSaving(true);
-    await supabase.from('orders').update({ reference_images: next }).eq('id', orderId);
+    const updateData = { reference_images: next } as any;
+    await supabase.from('orders').update(updateData).eq('id', orderId);
     setImages(next);
     setSaving(false);
     setShowPicker(false);
@@ -64,7 +65,8 @@ export function ReferenceImages({ orderId, customerId }: ReferenceImagesProps) {
 
   const removeImage = async (url: string) => {
     const next = images.filter(u => u !== url);
-    await supabase.from('orders').update({ reference_images: next }).eq('id', orderId);
+    const updateData = { reference_images: next } as any;
+    await supabase.from('orders').update(updateData).eq('id', orderId);
     setImages(next);
   };
 

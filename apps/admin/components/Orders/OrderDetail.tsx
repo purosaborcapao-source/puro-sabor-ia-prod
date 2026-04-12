@@ -24,6 +24,7 @@ interface Order {
   updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
+  sinal_valor?: number;
   notes?: string;
   created_at: string | null;
 }
@@ -87,11 +88,12 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         customer_name: orderData.customers?.name || 'N/A',
         customer_phone: orderData.customers?.phone,
         delivery_date: orderData.delivery_date,
-        delivery_type: orderData.delivery_type,
+        delivery_type: orderData.delivery_type || 'RETIRADA',
         status: orderData.status,
-        updated_at: orderData.updated_at,
+        updated_at: orderData.updated_at || new Date().toISOString(),
         payment_status: (orderData as any).payment_status || 'SINAL_PENDENTE',
         total: orderData.total,
+        sinal_valor: (orderData as any).sinal_valor || 0,
         notes: (orderData as any).notes || '',
         created_at: orderData.created_at
       };
@@ -343,7 +345,6 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                   <ConfirmPaymentButton
                     paymentEntryId={payment.id}
                     orderId={orderId}
-                    orderTotal={order.total}
                     paymentType={payment.payment_type}
                     paymentAmount={payment.amount}
                     onSuccess={() => setRefreshKey(k => k + 1)}
@@ -498,7 +499,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         <RegisterPaymentModal
           orderId={orderId}
           orderTotal={order.total}
-          sinalPago={order.sinal_valor}
+          sinalPago={order.sinal_valor || 0}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={() => {
             setShowPaymentModal(false);
