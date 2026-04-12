@@ -9,7 +9,7 @@ import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
-import { AlertCircle, MessageCircle, LayoutGrid } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -336,11 +336,34 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       <div className="lg:col-span-4 space-y-6">
         <div className="sticky top-8">
           <WhatsAppPanel phone={order.customer_phone || ''} customerId={order.customer_id} />
-          <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 rounded-lg">
-            <h4 className="text-[10px] font-black tracking-widest uppercase text-emerald-800 dark:text-emerald-400 mb-2 flex items-center gap-2">
-              <MessageCircle className="w-3 h-3" /> Resumo do Atendimento
-            </h4>
-            <p className="text-xs text-emerald-900 dark:text-emerald-300">O cliente está aguardando confirmação do sinal.</p>
+          <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 rounded-lg space-y-3">
+            <div>
+              <h4 className="text-[10px] font-black tracking-widest uppercase text-emerald-800 dark:text-emerald-400 mb-2 flex items-center gap-2">
+                <MessageCircle className="w-3 h-3" /> Resumo do Atendimento
+              </h4>
+              <p className="text-xs text-emerald-900 dark:text-emerald-300">O cliente está aguardando confirmação do sinal.</p>
+            </div>
+            
+            <button
+              onClick={() => {
+                const url = `https://puro-sabor-ia-prod.vercel.app/pedido/confirmacao/${order.id}`;
+                const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
+                navigator.clipboard.writeText(text);
+                alert('Link e resumo copiados para a área de transferência!');
+              }}
+              className="w-full py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10"
+            >
+              <Share2 className="w-3 h-3" /> Compartilhar Resumo
+            </button>
+            
+            <a
+              href={`https://puro-sabor-ia-prod.vercel.app/pedido/confirmacao/${order.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-2 bg-white dark:bg-gray-800 border border-emerald-200 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-all"
+            >
+              <FileText className="w-3 h-3" /> Ver como Cliente
+            </a>
           </div>
         </div>
       </div>

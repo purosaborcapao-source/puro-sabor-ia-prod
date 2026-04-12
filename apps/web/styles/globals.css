@@ -1,15 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&family=Inter:wght@400;500;600;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html {
-  scroll-behavior: smooth;
+:root {
+  --bg-creme: #FDF6EC;
+  --primary-paprica: #C8562A;
+  --primary-dark: #3E2723;
+  --accent-gold: #D4AF37;
+  --text-main: #4E342E;
+  --card-shadow: 0 4px 20px -2px rgba(200, 86, 42, 0.08);
 }
 
-body {
-  @apply bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-50;
+@layer base {
+  body {
+    @apply bg-[var(--bg-creme)] text-[var(--text-main)] font-['Inter'] antialiased;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Fraunces', serif;
+  }
 }
 
-* {
-  @apply border-gray-200 dark:border-gray-800;
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-[var(--primary-paprica)] text-white font-bold rounded-xl shadow-lg shadow-orange-900/20 hover:bg-[#b04a24] active:scale-95 transition-all uppercase tracking-widest text-xs;
+  }
+
+  .card-premium {
+    @apply bg-white rounded-2xl border border-orange-100 shadow-[var(--card-shadow)] overflow-hidden hover:shadow-orange-200/20 transition-all;
+  }
+
+  .glass-header {
+    @apply sticky top-0 z-50 bg-[var(--bg-creme)]/80 backdrop-blur-md border-b border-orange-100;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
