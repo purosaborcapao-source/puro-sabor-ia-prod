@@ -159,7 +159,7 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
     if (sending) return
     setSending(true)
     try {
-      const customerUrl = 'https://puro-sabor-catalogo-aj0c0zwkk-purosaborcapao-7890s-projects.vercel.app';
+      const customerUrl = 'https://puro-sabor-catalogo.vercel.app';
       const message = `Olá! Segue nosso cardápio completo: ${customerUrl}. Qualquer dúvida estou à disposição! 🍰`
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
