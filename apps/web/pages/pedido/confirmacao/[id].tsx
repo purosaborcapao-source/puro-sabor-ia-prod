@@ -126,7 +126,7 @@ export default function ConfirmacaoPage() {
                         )}
                       </div>
                       {item.customizations?.notes && (
-                        <p className="mt-2 text-[10px] text-gray-400 italic">"{item.customizations.notes}"</p>
+                        <p className="mt-2 text-[10px] text-gray-400 italic">&quot;{item.customizations.notes}&quot;</p>
                       )}
                    </div>
                  ))}

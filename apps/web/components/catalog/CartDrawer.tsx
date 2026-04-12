@@ -74,7 +74,7 @@ export function CartDrawer({
                   )}
                   {item.customizations?.notes && (
                     <p className="text-[10px] text-gray-400 italic font-medium leading-tight">
-                      "{item.customizations.notes}"
+                      &quot;{item.customizations.notes}&quot;
                     </p>
                   )}
                 </div>
