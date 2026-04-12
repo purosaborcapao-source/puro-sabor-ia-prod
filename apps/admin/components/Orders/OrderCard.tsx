@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Brain, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { Brain, Calendar, Clock } from 'lucide-react';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { useAuth } from '@/contexts/AuthContext';
 
