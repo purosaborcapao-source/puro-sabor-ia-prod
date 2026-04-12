@@ -102,7 +102,7 @@ export function ReferenceImages({ orderId, customerId }: ReferenceImagesProps) {
       ) : images.length === 0 ? (
         <div className="text-center py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg">
           <p className="text-xs text-gray-400">Nenhuma imagem de referência anexada.</p>
-          <p className="text-[10px] text-gray-300 mt-1">Clique em "Adicionar do Chat" para selecionar uma imagem do histórico.</p>
+          <p className="text-[10px] text-gray-300 mt-1">Clique em &quot;Adicionar do Chat&quot; para selecionar uma imagem do histórico.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">
