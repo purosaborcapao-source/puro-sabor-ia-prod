@@ -1,0 +1,82 @@
+﻿id,name,description,category,price,sale_unit,min_qty,qty_step,is_active,image_url,has_decoration_option,prep_time,cost_price,custom_options,created_at,updated_at
+48,Bolo Fake,,tortas,40,UNIDADE,0.5,0.5,True,,True,,40,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+89,Macron,"Disco de coco, ameixa e ovos moles",tortas,85,KG,0.5,0.5,True,,True,,85,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+51,Rocambole Nata Bombom Negrinho,Pão de ló chocolate,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+49,Rocambole Nata Morango e Negrinho,Pão de ló chocolate,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+44,Suprema Nata Abacaxi Branquinho,Sem pão de ló,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+43,Suprema Nata Bombom Negrinho,Sem pão de ló,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+42,Suprema Nata Morango Branquinho,Sem pão de ló,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+35,Torta Bombom Nata e Negrinho,Pão de ló chocolate,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+47,Torta Marta Rocha,"Pão chocolate, ovos moles, crocante de nozes, merengada, nata e ameixa",tortas,78,KG,0.5,0.5,True,,True,,78,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+38,Torta Nata Abacaxi Branquinho e Coco,Pão de ló branco,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+33,Torta Nata Abacaxi e Branquinho,Pão de ló branco,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+41,Torta Nata Morango Negrinho Bombom,Pão de ló chocolate,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+40,Torta Nata Morango Negrinho com Coco,Pão de ló chocolate,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+31,Torta Nata Morango e Branquinho,Pão de ló branco,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+39,Torta Nata Morango e Branquinho e Coco,Pão de ló branco,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+32,Torta Nata Morango e Negrinho,Pão de ló chocolate,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+81,Torta Nata Nozes Leite Condensado Cozido,"Leite condensado cozido, nata e nozes",tortas,90,KG,0.5,0.5,True,,True,,90,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+36,Torta Nata com Frutas Branquinho,"Branquinho, nata e frutas (abacaxi, morango, kiwi e pessego)",tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+37,Torta Nata com Pessego com Branquinho,Pão de ló branco,tortas,68,KG,0.5,0.5,True,,True,,68,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+30,Torta Negrinho e Branquinho,Pão de ló branco,tortas,56,KG,0.5,0.5,True,,True,,56,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+34,Torta Ouro Branco Nata e Branquinho,Pão de ló branco,tortas,65,KG,0.5,0.5,True,,True,,65,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+45,Torta Prestigio,Pão de ló chocolate,tortas,76,KG,0.5,0.5,True,,True,,76,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+46,Torta Sensação,Pão de ló chocolate,tortas,76,KG,0.5,0.5,True,,True,,76,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+23,Barquete Tradicional,,tortas frias,1.9,UNIDADE,0.5,0.5,True,,False,,1.66,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+27,Torta Fria Frango,,tortas frias,54,KG,0.5,0.5,True,,False,,54,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+29,Torta Fria Frango e Legumes,,tortas frias,54,KG,0.5,0.5,True,,False,,54,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+28,Torta Fria Legumes,,tortas frias,54,KG,0.5,0.5,True,,False,,54,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+17,Tortinha Legumes,,tortas frias,1.67,UNIDADE,0.5,0.5,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+18,Tortinha Presunto e Queijo,,tortas frias,1.67,UNIDADE,0.5,0.5,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+1,Tortinha de Frango,,tortas frias,1.67,UNIDADE,0.5,0.5,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+55,Beijinho,,docinhos,1.42,UNIDADE,25.0,1.0,True,,False,,1.23,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+72,Beijinho Cobertura Chocolate,,docinhos,1.9,UNIDADE,25.0,1.0,True,,False,,1.66,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+53,Branquinho,,docinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+71,Branquinho Cobertura Chocolate,,docinhos,1.9,UNIDADE,25.0,1.0,True,,False,,1.66,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+52,Brigadeiro,,docinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+70,Brigadeiro Cobertura Chocolate,,docinhos,1.9,UNIDADE,25.0,1.0,True,,False,,1.66,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+56,Cajuzinho,,docinhos,1.42,UNIDADE,25.0,1.0,True,,False,,1.23,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+73,Cajuzinho Cobertura Chocolate,,docinhos,1.9,UNIDADE,25.0,1.0,True,,False,,1.66,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+69,Camafeu,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+54,Casadinho,,docinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+67,Churrinhos,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+79,Copinho de Chocolate Branquinho,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+76,Copinho de Chocolate Limão,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+77,Copinho de Chocolate Maracujá,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+78,Copinho de Chocolate Negrinho,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+80,Copinho de Chocolate Quatro Leites,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+65,Kit Kat,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+63,Leite Ninho,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+74,Mini Trufa Morango,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+75,Mini Trufa Uva,,docinhos,2.5,UNIDADE,1.0,1.0,True,,False,,2.17,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+68,Nutella,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+57,Olho de Sogra,,docinhos,1.42,UNIDADE,25.0,1.0,True,,False,,1.23,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+64,Oreo,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+62,Quindim Leite Condensado,,docinhos,1.95,UNIDADE,25.0,1.0,True,,False,,1.7,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+61,Quindim Tradicional,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+66,Stikadinho,,docinhos,1.84,UNIDADE,25.0,1.0,True,,False,,1.6,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+60,Tortinha Coco,,docinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+58,Tortinha Limão,,docinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+59,Tortinha Maracujá,,docinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+10,Cachorinho Frito,,salgadinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+12,Cachorinho Salsicha Assado,Massa folhada,salgadinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.39,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+13,Cachorrinho Calabresa Assado,Massa folhada,salgadinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.39,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+8,Caseirinho Carne,,salgadinhos,1.39,UNIDADE,25.0,1.0,True,,False,,1.21,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+9,Caseirinho Frango,,salgadinhos,1.39,UNIDADE,25.0,1.0,True,,False,,1.21,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+7,Coxinha Frango,,salgadinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+21,Croquete,,salgadinhos,1.67,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+16,Empada Frango,,salgadinhos,1.72,UNIDADE,25.0,1.0,True,,False,,1.5,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+25,Mini Pizza Calabresa,,salgadinhos,2.09,UNIDADE,25.0,1.0,True,,False,,1.82,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+24,Mini Pizza Frango,,salgadinhos,2.09,UNIDADE,25.0,1.0,True,,False,,1.82,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+26,Mini Pizza Presunto e Queijo,,salgadinhos,2.09,UNIDADE,25.0,1.0,True,,False,,1.82,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+14,Pastel Nata Brocolis,,salgadinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.39,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+20,Pastel Nata Brocolis e Ricota,,salgadinhos,1.67,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+19,Pastel Nata Carne,,salgadinhos,1.67,UNIDADE,25.0,1.0,True,,False,,1.45,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+15,Pastel Nata Frango,,salgadinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.39,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+22,Pastel Nata Palmito,,salgadinhos,1.87,UNIDADE,25.0,1.0,True,,False,,1.63,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+2,Risoles Carne,,salgadinhos,1.32,UNIDADE,25.0,1.0,True,,False,,1.15,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+3,Risoles Frango,,salgadinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+5,Risoles Milho e Queijo,,salgadinhos,1.25,UNIDADE,25.0,1.0,True,,False,,1.09,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+4,Risoles Presunto e Queijo,,salgadinhos,1.32,UNIDADE,25.0,1.0,True,,False,,1.15,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+6,Risoles Queijo,,salgadinhos,1.32,UNIDADE,25.0,1.0,True,,False,,1.15,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00
+11,Troxinha Frango,Massa folhada,salgadinhos,1.6,UNIDADE,25.0,1.0,True,,False,,1.39,,2026-04-12T19:54:36+00:00,2026-04-12T19:54:36+00:00

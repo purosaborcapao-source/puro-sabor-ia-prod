@@ -160,7 +160,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
     
     try {
       setSendingWhatsApp(true);
-      const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-ia-prod.vercel.app';
+      const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-catalogo-aj0c0zwkk-purosaborcapao-7890s-projects.vercel.app';
       const url = `${customerUrl}/pedido/confirmacao/${order.id}`;
       const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
       
@@ -379,7 +379,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
             
             <button
               onClick={() => {
-                const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-ia-prod.vercel.app';
+                const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-catalogo-aj0c0zwkk-purosaborcapao-7890s-projects.vercel.app';
                 const url = `${customerUrl}/pedido/confirmacao/${order.id}`;
                 const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
                 navigator.clipboard.writeText(text);
@@ -404,7 +404,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
             </button>
             
             <a
-              href={`${process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-ia-prod.vercel.app'}/pedido/confirmacao/${order.id}`}
+              href={`${process.env.NEXT_PUBLIC_CUSTOMER_URL || 'https://puro-sabor-catalogo-aj0c0zwkk-purosaborcapao-7890s-projects.vercel.app'}/pedido/confirmacao/${order.id}`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full py-2 bg-white dark:bg-gray-800 border border-emerald-200 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-all"

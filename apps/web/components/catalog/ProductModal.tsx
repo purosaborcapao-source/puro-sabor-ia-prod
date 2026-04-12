@@ -38,7 +38,7 @@ export function ProductModal({ product, isOpen, onClose, onConfirm }: ProductMod
     onClose();
   };
 
-  const flavors = product.custom_options?.find((opt: any) => opt.label === 'Recheio' || opt.label === 'Sabor')?.options || [];
+  const flavors = (Array.isArray(product.custom_options) ? product.custom_options : []).find((opt: any) => opt.label === 'Recheio' || opt.label === 'Sabor')?.options || [];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 animate-in fade-in duration-300">
