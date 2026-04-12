@@ -12,6 +12,7 @@ import {
   X,
   Loader2,
   CheckCheck,
+  LayoutGrid,
 } from 'lucide-react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -154,6 +155,27 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
     }
   }
 
+  const handleSendCatalog = async () => {
+    if (sending) return
+    setSending(true)
+    try {
+      const message = 'Olá! Segue nosso cardápio completo: https://puro-sabor-ia-prod.vercel.app/pedido. Qualquer dúvida estou à disposição! 🍰'
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'text', phone, message, customerId }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error)
+      alert('Cardápio enviado com sucesso!')
+    } catch (err) {
+      console.error('❌ Envio de cardápio falhou:', err)
+      alert('Falha ao enviar cardápio.')
+    } finally {
+      setSending(false)
+    }
+  }
+
   // ── File Upload (image / document) ────────────────────────────────────────
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -235,6 +257,20 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
           >
             <Brain className={`w-3 h-3 ${analyzing ? 'animate-pulse' : ''}`} />
             {analyzing ? 'Analisando...' : 'IA'}
+          </button>
+          <button
+            onClick={handleSendCatalog}
+            disabled={sending}
+            title="Enviar Cardápio"
+            className={`flex items-center gap-1.5 px-2.5 py-1 border text-[10px] font-black tracking-widest uppercase transition-all ${
+              sending
+                ? 'border-gray-200 dark:border-gray-800 text-gray-400 cursor-not-allowed'
+                : 'border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10'
+            }`}
+            style={{ borderRadius: '1px' }}
+          >
+            <LayoutGrid className="w-3 h-3" />
+            {sending ? 'Enviando...' : 'Cardápio'}
           </button>
           <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-black tracking-widest uppercase" style={{ borderRadius: '2px' }}>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

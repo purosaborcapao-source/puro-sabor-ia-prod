@@ -9,7 +9,7 @@ import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
-import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText, Loader2 } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -50,6 +50,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
   const canConfirmPayment = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
@@ -151,6 +152,35 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
     } catch (err) {
       console.error('Erro ao adicionar item:', err);
       setError('Falha ao adicionar item.');
+    }
+  const handleSendSummaryToWhatsApp = async () => {
+    if (!order || !order.customer_phone) return;
+    
+    try {
+      setSendingWhatsApp(true);
+      const url = `https://puro-sabor-ia-prod.vercel.app/pedido/confirmacao/${order.id}`;
+      const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
+      
+      const res = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'text', 
+          phone: order.customer_phone, 
+          message: text, 
+          customerId: order.customer_id 
+        }),
+      });
+      
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      
+      alert('Resumo enviado com sucesso via WhatsApp!');
+    } catch (err) {
+      console.error('Erro ao enviar WhatsApp:', err);
+      alert('Falha ao enviar mensagem. Verifique se o WhatsApp está conectado.');
+    } finally {
+      setSendingWhatsApp(false);
     }
   };
 
@@ -351,9 +381,22 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
                 navigator.clipboard.writeText(text);
                 alert('Link e resumo copiados para a área de transferência!');
               }}
-              className="w-full py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10"
+              className="w-full py-2 bg-emerald-600/10 border border-emerald-600/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-600/20 transition-all"
             >
-              <Share2 className="w-3 h-3" /> Compartilhar Resumo
+              <Share2 className="w-3 h-3" /> Copiar Link Resumo
+            </button>
+
+            <button
+              onClick={handleSendSummaryToWhatsApp}
+              disabled={sendingWhatsApp || !order.customer_phone}
+              className="w-full py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10 disabled:opacity-50"
+            >
+              {sendingWhatsApp ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <MessageCircle className="w-3 h-3" />
+              )}
+              Enviar via WhatsApp
             </button>
             
             <a
