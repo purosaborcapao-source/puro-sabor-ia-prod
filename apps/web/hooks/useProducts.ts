@@ -32,7 +32,7 @@ export function useProducts() {
           .order('name', { ascending: true });
 
         if (err) throw err;
-        setProducts(data as Product[]);
+        setProducts((data as any) || []);
       } catch (e: any) {
         console.error('Erro ao buscar produtos:', e);
         setError(e.message);

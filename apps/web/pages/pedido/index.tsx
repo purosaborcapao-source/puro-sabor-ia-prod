@@ -14,7 +14,7 @@ import { supabasePublic } from '../../lib/supabase-public';
 type AppState = 'CATALOG' | 'CHECKOUT' | 'SUCCESS';
 
 export default function PedidoPage() {
-  const { products, productsByCategory, loading, error } = useProducts();
+  const { productsByCategory, loading } = useProducts();
   const { items, addItem, removeItem, clearCart, total, sinalValor } = useCart();
   
   const [state, setState] = useState<AppState>('CATALOG');
@@ -26,10 +26,11 @@ export default function PedidoPage() {
 
   // Define categoria inicial após carregar
   React.useEffect(() => {
-    if (Object.keys(productsByCategory).length > 0 && !activeCategory) {
-      setActiveCategory(Object.keys(productsByCategory)[0]);
+    const categories = Object.keys(productsByCategory || {});
+    if (categories.length > 0 && !activeCategory) {
+      setActiveCategory(categories[0]);
     }
-  }, [productsByCategory]);
+  }, [productsByCategory, activeCategory]);
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);

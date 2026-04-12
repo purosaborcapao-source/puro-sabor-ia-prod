@@ -22,7 +22,7 @@ export default function ConfirmacaoPage() {
             *,
             customers:customer_id(name, phone)
           `)
-          .eq('id', id)
+          .eq('id', String(id))
           .single();
 
         if (orderErr) throw orderErr;
@@ -34,7 +34,7 @@ export default function ConfirmacaoPage() {
             *,
             products:product_id(name, image_url, sale_unit)
           `)
-          .eq('order_id', id);
+          .eq('order_id', String(id));
 
         if (itemsErr) throw itemsErr;
         setItems(itemsData);
@@ -51,7 +51,7 @@ export default function ConfirmacaoPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-bold uppercase tracking-widest text-orange-200">Carregando Recibo...</div>;
   if (!order) return <div className="min-h-screen flex items-center justify-center font-bold text-red-400">Pedido não encontrado.</div>;
 
-  const isConfirmed = order.payment_status === 'SINAL_PAGO' || order.payment_status === 'QUITADO' || order.sinal_confirmado;
+  const isConfirmed = order?.payment_status === 'SINAL_PAGO' || order?.payment_status === 'QUITADO' || order?.sinal_confirmado;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-6">
@@ -97,7 +97,7 @@ export default function ConfirmacaoPage() {
               <div className="space-y-3">
                  <div className="flex items-center gap-3 text-sm">
                     <Clock className="w-4 h-4 text-orange-200" />
-                    <span className="font-bold">{new Date(order.delivery_date).toLocaleDateString('pt-BR')} às {new Date(order.delivery_date).toLocaleTimeString('pt-BR', { hour: '2xl', minute: '2-digit' })}</span>
+                    <span className="font-bold">{new Date(order.delivery_date).toLocaleDateString('pt-BR')} às {new Date(order.delivery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                  </div>
                  <div className="flex items-center gap-3 text-sm">
                     <MapPin className="w-4 h-4 text-orange-200" />
