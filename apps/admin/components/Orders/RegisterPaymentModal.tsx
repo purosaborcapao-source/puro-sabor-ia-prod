@@ -12,11 +12,12 @@ interface RegisterPaymentModalProps {
 export function RegisterPaymentModal({
   orderId,
   orderTotal,
-  sinalPago: _sinalPago, // Mantido por compatibilidade se necessário, mas usaremos saldo real
+  sinalPago: _sinalPago,
   onClose,
   onSuccess
 }: RegisterPaymentModalProps) {
-  const [paymentType, setPaymentType] = useState<'SINAL' | 'PARCIAL' | 'SALDO'>('SINAL')
+  const [paymentType, setPaymentType] = useState<'SINAL' | 'SALDO' | 'PARCIAL' | 'ADIANTADO' | 'ENTREGA' | 'POSTERIOR'>('SINAL')
+  const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'DEBITO' | 'CREDITO' | 'DINHEIRO'>('PIX')
   const [amount, setAmount] = useState('')
   const [notes, setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -63,6 +64,7 @@ export function RegisterPaymentModal({
         body: JSON.stringify({
           order_id: orderId,
           type: paymentType,
+          method: paymentMethod,
           valor: numAmount,
           notes: notes
         })
@@ -103,27 +105,57 @@ export function RegisterPaymentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Tipo de Pagamento */}
+          {/* Tipo de Pagamento (Classificação) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Tipo de Pagamento
+            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+              📋 Classificação
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['SINAL', 'PARCIAL', 'SALDO'] as const).map((type) => (
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'SINAL', label: 'Sinal' },
+                { id: 'ENTREGA', label: 'Na Entrega' },
+                { id: 'ADIANTADO', label: 'Adiantado' },
+                { id: 'POSTERIOR', label: 'Posterior (C.C.)' },
+              ].map((type) => (
                 <button
-                  key={type}
+                  key={type.id}
                   type="button"
-                  onClick={() => {
-                    setPaymentType(type)
-                    setAmount('')
-                  }}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    paymentType === type
-                      ? 'bg-blue-600 text-white'
+                  onClick={() => setPaymentType(type.id as any)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    paymentType === type.id
+                      ? 'bg-blue-600 text-white shadow-md scale-[1.02]'
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'
                   }`}
                 >
-                  {type === 'SINAL' ? 'Sinal' : type === 'SALDO' ? 'Saldo' : 'Parcial'}
+                  {type.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Método de Pagamento */}
+          <div>
+            <label className="block text-xs font-black uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
+              💰 Meio de Pagamento
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'PIX', label: '📱 Pix' },
+                { id: 'DEBITO', label: '💳 Débito' },
+                { id: 'CREDITO', label: '💳 Crédito' },
+                { id: 'DINHEIRO', label: '💵 Dinheiro' },
+              ].map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setPaymentMethod(m.id as any)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    paymentMethod === m.id
+                      ? 'bg-emerald-600 text-white shadow-md scale-[1.02]'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {m.label}
                 </button>
               ))}
             </div>

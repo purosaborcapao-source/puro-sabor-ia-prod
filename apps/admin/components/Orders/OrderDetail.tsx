@@ -21,13 +21,9 @@ interface Order {
   delivery_date: string;
   delivery_type: string;
   status: string;
+  updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
-  total: number;
-  sinal_valor: number;
-  sinal_confirmado: boolean;
-  conta_corrente?: boolean;
   notes?: string;
-  created_at: string | null;
 }
 
 interface PaymentEntry {
@@ -54,6 +50,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const [isCatalogOpen, setIsCatalogOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
+  const [showMiniEscolha, setShowMiniEscolha] = useState(false);
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
   const canConfirmPayment = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
@@ -90,13 +87,9 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         delivery_date: orderData.delivery_date,
         delivery_type: orderData.delivery_type,
         status: orderData.status,
+        updated_at: orderData.updated_at,
         payment_status: (orderData as any).payment_status || 'SINAL_PENDENTE',
-        total: orderData.total,
-        sinal_valor: (orderData as any).sinal_valor || 0,
-        sinal_confirmado: (orderData as any).sinal_confirmado || false,
-        conta_corrente: (orderData as any).conta_corrente || false,
-        notes: orderData.notes || '',
-        created_at: orderData.created_at
+        notes: (orderData as any).notes || '',
       };
 
       setOrder(processedOrder);
@@ -360,44 +353,70 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">💳 Gerenciar Pagamentos</h3>
-            <div className="flex gap-2">
+            <div className="flex gap-2 relative">
+              {showMiniEscolha ? (
+                <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 flex flex-col gap-2 min-w-[180px] z-20 animate-in fade-in slide-in-from-bottom-2">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Escolha o Meio</p>
+                  {[
+                    { id: 'PIX', label: '📱 Pix', bg: 'bg-emerald-600 hover:bg-emerald-700' },
+                    { id: 'DEBITO', label: '💳 Débito', bg: 'bg-blue-600 hover:bg-blue-700' },
+                    { id: 'CREDITO', label: '💳 Crédito', bg: 'bg-indigo-600 hover:bg-indigo-700' },
+                    { id: 'DINHEIRO', label: '💵 Dinheiro', bg: 'bg-amber-600 hover:bg-amber-700' },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={async () => {
+                        try {
+                          const supabaseToken = localStorage.getItem('supabase-auth-token')
+                          let token = ''
+                          if (supabaseToken) {
+                            token = JSON.parse(supabaseToken).access_token
+                          }
+
+                          const response = await fetch('/api/payments', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                              order_id: orderId,
+                              type: saldoDue >= order.total ? 'SINAL' : 'ENTREGA',
+                              method: m.id,
+                              valor: saldoDue,
+                              notes: 'Baixa Expressa (Mini Escolha)'
+                            })
+                          })
+
+                          if (!response.ok) {
+                            const err = await response.json()
+                            throw new Error(err.error || 'Erro ao registrar pagamento')
+                          }
+                          
+                          setShowMiniEscolha(false);
+                          setRefreshKey(k => k + 1);
+                        } catch (err: any) {
+                          alert('Erro ao confirmar pagamento: ' + err.message);
+                        }
+                      }}
+                      className={`w-full text-left px-3 py-2 ${m.bg} text-white rounded text-xs font-bold transition-all hover:scale-[1.02]`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                  <button 
+                    onClick={() => setShowMiniEscolha(false)}
+                    className="mt-1 text-[10px] text-gray-400 uppercase font-black tracking-widest text-center"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              ) : null}
+
               <button
-                onClick={async () => {
-                  if (confirm(`Confirmar recebimento direto de ${saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}?`)) {
-                    try {
-                      const supabaseToken = localStorage.getItem('supabase-auth-token')
-                      let token = ''
-                      if (supabaseToken) {
-                        token = JSON.parse(supabaseToken).access_token
-                      }
-
-                      const response = await fetch('/api/payments', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                          order_id: orderId,
-                          type: 'SINAL',
-                          valor: saldoDue,
-                          notes: 'Baixa Expressa / PIX'
-                        })
-                      })
-
-                      if (!response.ok) {
-                        const err = await response.json()
-                        throw new Error(err.error || 'Erro ao registrar pagamento')
-                      }
-                      
-                      setRefreshKey(k => k + 1);
-                    } catch (err: any) {
-                      alert('Erro ao confirmar pagamento: ' + err.message);
-                    }
-                  }
-                }}
+                onClick={() => setShowMiniEscolha(true)}
                 disabled={order.payment_status === 'QUITADO' || saldoDue === 0}
-                className="px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold uppercase tracking-widest shadow-sm"
+                className="px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 text-xs font-bold uppercase tracking-widest shadow-sm flex items-center gap-2"
               >
                 + Baixar {saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </button>

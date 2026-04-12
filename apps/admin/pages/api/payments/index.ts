@@ -92,20 +92,28 @@ async function handleRegisterPayment(
   userId: string
 ) {
   try {
-    const { order_id, type, valor, notes } = req.body
+    const { order_id, type, valor, method, notes } = req.body
 
     // Validate required fields
-    if (!order_id || !type || !valor) {
+    if (!order_id || !type || !valor || !method) {
       return res.status(400).json({
-        error: 'Missing required fields: order_id, type, valor'
+        error: 'Missing required fields: order_id, type, valor, method'
       })
     }
 
     // Validate type enum
-    const validTypes = ['SINAL', 'SALDO', 'ANTECIPADO', 'PARCIAL']
+    const validTypes = ['SINAL', 'SALDO', 'ANTECIPADO', 'PARCIAL', 'ADIANTADO', 'ENTREGA', 'POSTERIOR']
     if (!validTypes.includes(type)) {
       return res.status(400).json({
         error: `Invalid type. Must be one of: ${validTypes.join(', ')}`
+      })
+    }
+
+    // Validate method enum
+    const validMethods = ['PIX', 'DEBITO', 'CREDITO', 'DINHEIRO']
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({
+        error: `Invalid method. Must be one of: ${validMethods.join(', ')}`
       })
     }
 
@@ -120,13 +128,30 @@ async function handleRegisterPayment(
       return res.status(404).json({ error: 'Order not found' })
     }
 
+    // Trava de valor excedente (mais tolerância de 1%)
+    const { data: existingPayments } = await supabaseServer
+      .from('payment_entries')
+      .select('valor')
+      .eq('order_id', order_id)
+      .eq('status', 'CONFIRMADO')
+
+    const totalPaid = (existingPayments || []).reduce((acc, p) => acc + (p.valor || 0), 0)
+    const newAmount = parseFloat(valor)
+    
+    if (totalPaid + newAmount > (order.total * 1.01)) {
+      return res.status(400).json({ 
+        error: `O valor excede o saldo devedor do pedido. Total Pago: R$ ${totalPaid}, Restante: R$ ${order.total - totalPaid}` 
+      })
+    }
+
     // Create payment entry
     const { data: newPayment, error: paymentError } = await supabaseServer
       .from('payment_entries')
       .insert({
         order_id,
         type,
-        valor: parseFloat(valor),
+        method,
+        valor: newAmount,
         registered_by: userId,
         status: 'AGUARDANDO_CONFIRMACAO',
         notes: notes || null,
@@ -145,8 +170,8 @@ async function handleRegisterPayment(
       changed_by: userId,
       field: 'payment_registered',
       old_value: null,
-      new_value: `${type}: R$ ${valor}`,
-      reason: `Payment registered (status: AGUARDANDO_CONFIRMACAO)`
+      new_value: `${type} via ${method}: R$ ${valor}`,
+      reason: `Pagamento registrado manualmente (Status: AGUARDANDO_CONFIRMACAO)`
     })
 
     return res.status(201).json({

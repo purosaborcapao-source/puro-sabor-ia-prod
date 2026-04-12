@@ -46,38 +46,9 @@ export function ConfirmPaymentButton({
 
       if (updateErr) throw updateErr
 
-      // 2. Buscar todos os pagamentos CONFIRMADOS para este pedido para recalcular o status
-      const { data: confirmedPayments, error: fetchErr } = await supabase
-        .from('payment_entries')
-        .select('valor')
-        .eq('order_id', orderId)
-        .eq('status', 'CONFIRMADO')
+      if (updateErr) throw updateErr
 
-      if (fetchErr) throw fetchErr
-
-      const totalConfirmed = (confirmedPayments || []).reduce((sum, p) => sum + (p.valor || 0), 0)
-      
-      // 3. Determinar novo status financeiro do pedido
-      // Se total >= total do pedido, QUITADO. Senão, se tem algum confirmado, SINAL_PAGO.
-      let newPaymentStatus: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE' = 'SINAL_PENDENTE'
-      if (totalConfirmed >= orderTotal) {
-        newPaymentStatus = 'QUITADO'
-      } else if (totalConfirmed > 0) {
-        newPaymentStatus = 'SINAL_PAGO'
-      }
-
-      const { error: orderUpdateErr } = await supabase
-        .from('orders')
-        .update({ 
-          payment_status: newPaymentStatus,
-          // Se for sinal, marcar explicitamente como confirmado (para compatibilidade legada)
-          ...(paymentType === 'SINAL' ? { sinal_confirmado: true } : {})
-        })
-        .eq('id', orderId)
-
-      if (orderUpdateErr) throw orderUpdateErr
-
-      console.log('✅ Pagamento confirmado e status do pedido atualizado para:', newPaymentStatus)
+      console.log('✅ Pagamento confirmado no banco.')
 
       // Success
       setShowConfirmation(false)
