@@ -10,7 +10,7 @@ import { useCart } from '../../hooks/useCart';
 
 export default function PedidoPage() {
   const { productsByCategory, loading } = useProducts();
-  const { items, addItem, removeItem, total, sinalValor } = useCart();
+  const { items, addItem, removeItem, total } = useCart();
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -108,8 +108,8 @@ export default function PedidoPage() {
         items={items}
         onRemoveItem={removeItem}
         total={total}
-        sinalValor={sinalValor}
-        onCheckout={() => {}} // não usado — checkout é via WhatsApp direto
+        sinalValor={0}
+        onCheckout={() => {}}
       />
     </div>
   );
