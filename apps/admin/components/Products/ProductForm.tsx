@@ -12,7 +12,10 @@ const productSchema = z.object({
   category: z.string().min(1, 'Categoria é obrigatória'),
   description: z.string().min(0).optional(),
   prep_time: z.number().optional(),
-  is_active: z.boolean().optional()
+  is_active: z.boolean().optional(),
+  sale_unit: z.enum(['UNIDADE', 'KG']),
+  min_qty: z.number().min(0),
+  qty_step: z.number().min(0)
 }).strict()
 
 type ProductFormData = z.infer<typeof productSchema>
@@ -37,11 +40,14 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
     defaultValues: initialData
       ? {
           name: initialData.name,
-          price: initialData.price,
+          price: Number(initialData.price),
           category: initialData.category,
           description: initialData.description || '',
           prep_time: initialData.prep_time || 0,
-          is_active: initialData.is_active ?? true
+          is_active: initialData.is_active ?? true,
+          sale_unit: (initialData.sale_unit === 'CENTO' ? 'UNIDADE' : initialData.sale_unit) as 'UNIDADE' | 'KG',
+          min_qty: initialData.min_qty || 1,
+          qty_step: Number(initialData.qty_step) || 1
         }
       : {
           name: '',
@@ -49,7 +55,10 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
           category: '',
           description: '',
           prep_time: 0,
-          is_active: true
+          is_active: true,
+          sale_unit: 'UNIDADE',
+          min_qty: 1,
+          qty_step: 1
         }
   })
 
@@ -68,7 +77,10 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
             category: data.category,
             description: data.description || null,
             prep_time: data.prep_time,
-            is_active: data.is_active
+            is_active: data.is_active,
+            sale_unit: data.sale_unit,
+            min_qty: data.min_qty,
+            qty_step: data.qty_step
           })
           .eq('id', initialData.id)
 
@@ -81,7 +93,10 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
           category: data.category,
           description: data.description || null,
           prep_time: data.prep_time,
-          is_active: data.is_active
+          is_active: data.is_active,
+          sale_unit: data.sale_unit,
+          min_qty: data.min_qty,
+          qty_step: data.qty_step
         })
 
         if (err) throw err
@@ -178,6 +193,49 @@ export function ProductForm({ initialData, onSuccess, onCancel }: ProductFormPro
               placeholder="0"
               disabled={isSubmitting}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Unidade de Venda *
+            </label>
+            <select
+              {...register('sale_unit')}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              disabled={isSubmitting}
+            >
+              <option value="UNIDADE">Unidade (unid)</option>
+              <option value="KG">Quilograma (KG)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Pedido Mínimo *
+            </label>
+            <input
+              type="number"
+              {...register('min_qty', { valueAsNumber: true })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Ex: 25 ou 500"
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Passo de Quantidade (Múltiplo)
+            </label>
+            <input
+              type="number"
+              {...register('qty_step', { valueAsNumber: true })}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Ex: 1 ou 500"
+              disabled={isSubmitting}
+            />
+            <p className="text-[10px] text-gray-500 mt-1">
+              Nota: Para tortas (KG), o pedido aumentará sempre neste múltiplo. Para unidades, aumentará de 1 em 1 após o mínimo.
+            </p>
           </div>
         </div>
 

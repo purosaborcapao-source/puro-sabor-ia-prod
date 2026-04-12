@@ -8,7 +8,7 @@ export interface Product {
   price: number;
   category: string;
   image_url: string | null;
-  sale_unit: 'UNIDADE' | 'CENTO' | 'KG';
+  sale_unit: 'UNIDADE' | 'KG';
   min_qty: number;
   qty_step: number;
   has_decoration_option: boolean;

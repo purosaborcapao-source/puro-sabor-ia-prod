@@ -14,7 +14,6 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
 
   const unitLabel = {
     'UNIDADE': 'un',
-    'CENTO': 'cento',
     'KG': 'kg'
   }[product.sale_unit];
 

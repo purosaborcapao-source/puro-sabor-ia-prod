@@ -26,7 +26,6 @@ export function ProductModal({ product, isOpen, onClose, onConfirm }: ProductMod
   if (!isOpen) return null;
 
   const currentPrice = 
-    product.sale_unit === 'CENTO' ? (product.price * (quantity / 100)) :
     product.sale_unit === 'KG' ? (product.price * (quantity / 1000)) :
     (product.price * quantity);
 

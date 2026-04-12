@@ -277,7 +277,7 @@ export type Database = {
           is_ai_suggestion?: boolean | null
           new_value?: string | null
           old_value?: string | null
-          order_id?: string
+          order_id: string
           reason?: string | null
           status?: Database["public"]["Enums"]["order_change_status"] | null
         }
@@ -498,12 +498,16 @@ export type Database = {
           created_at: string | null
           custom_options: Json | null
           description: string | null
+          has_decoration_option: boolean
           id: string
           image_url: string | null
           is_active: boolean
+          min_qty: number
           name: string
           prep_time: number
           price: number
+          qty_step: number
+          sale_unit: string
           updated_at: string | null
         }
         Insert: {
@@ -512,12 +516,16 @@ export type Database = {
           created_at?: string | null
           custom_options?: Json | null
           description?: string | null
+          has_decoration_option?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
+          min_qty?: number
           name: string
           prep_time?: number
           price: number
+          qty_step?: number
+          sale_unit?: string
           updated_at?: string | null
         }
         Update: {
@@ -526,12 +534,16 @@ export type Database = {
           created_at?: string | null
           custom_options?: Json | null
           description?: string | null
+          has_decoration_option?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean
+          min_qty?: number
           name?: string
           prep_time?: number
           price?: number
+          qty_step?: number
+          sale_unit?: string
           updated_at?: string | null
         }
         Relationships: []

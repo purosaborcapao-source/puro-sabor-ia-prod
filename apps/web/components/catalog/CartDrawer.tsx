@@ -65,7 +65,9 @@ export function CartDrawer({
 
                 <div className="space-y-1 mb-4">
                   <p className="text-[10px] uppercase font-black text-orange-900/40 tracking-wider">
-                    {item.quantity < 1000 ? `${item.quantity}g` : `${item.quantity / 1000}kg`} • {item.customizations?.flavor || 'Sabor não definido'}
+                    {item.sale_unit === 'KG' 
+                      ? (item.quantity < 1000 ? `${item.quantity}g` : `${item.quantity / 1000}kg`) 
+                      : `${item.quantity} unid`} • {item.customizations?.flavor || 'Sabor não definido'}
                   </p>
                   {item.customizations?.decoration && (
                     <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">
@@ -83,7 +85,6 @@ export function CartDrawer({
                    <span className="text-xs font-black text-[var(--primary-paprica)]">
                       {(
                         item.sale_unit === 'KG' ? (item.price * item.quantity / 1000) :
-                        item.sale_unit === 'CENTO' ? (item.price * item.quantity / 100) :
                         (item.price * item.quantity)
                       ).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                    </span>

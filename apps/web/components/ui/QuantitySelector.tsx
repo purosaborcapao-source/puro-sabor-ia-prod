@@ -4,22 +4,26 @@ import { Minus, Plus } from 'lucide-react';
 interface QuantitySelectorProps {
   value: number;
   onChange: (value: number) => void;
-  unit: 'CENTO' | 'UNIDADE' | 'KG';
+  unit: 'UNIDADE' | 'KG';
   minQty: number;
   step: number;
 }
 
 export function QuantitySelector({ value, onChange, unit, minQty, step }: QuantitySelectorProps) {
-  const handleIncrease = () => onChange(value + step);
+  // Regra: se for KG, segue o step (múltiplos). Se for UNIDADE, o step é fixo em 1 após o mínimo.
+  const actualStep = unit === 'KG' ? step : 1;
+
+  const handleIncrease = () => onChange(value + actualStep);
   const handleDecrease = () => {
     if (value > minQty) {
-      onChange(value - step);
+      onChange(Math.max(minQty, value - actualStep));
     }
   };
 
   // Se for KG (Torta), vamos usar um estilo diferente, talvez botões de sugestão
   if (unit === 'KG') {
-    const suggestions = [500, 1000, 1500, 2000, 2500, 3000];
+    // Sugestões baseadas no step para Tortas
+    const suggestions = [step, step * 2, step * 3, step * 4, step * 5, step * 6];
     return (
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -61,12 +65,12 @@ export function QuantitySelector({ value, onChange, unit, minQty, step }: Quanti
     );
   }
 
-  // Se for CENTO ou UNIDADE (Salgados/Doces)
+  // Se for UNIDADE (Salgados/Doces)
   return (
     <div className="flex items-center gap-4 bg-orange-50 p-4 rounded-xl border border-orange-100">
       <div className="flex-1">
         <span className="text-xs font-bold uppercase tracking-widest text-orange-900/40 block mb-1">Quantidade</span>
-        <span className="text-[10px] font-bold text-orange-800">Mínimo: {minQty} {unit === 'CENTO' ? 'un' : 'un'}</span>
+        <span className="text-[10px] font-bold text-orange-800">Mínimo: {minQty} unid</span>
       </div>
       <div className="flex items-center gap-4">
         <button 

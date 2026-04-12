@@ -7,7 +7,7 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
-  sale_unit: 'UNIDADE' | 'CENTO' | 'KG';
+  sale_unit: 'UNIDADE' | 'KG';
   customizations?: {
     flavor?: string;
     decoration?: 'PADRAO' | 'PERSONALIZADA';
@@ -50,9 +50,7 @@ export function useCart() {
   // Preço por UNIDADE: (price * quantity)
   const total = useMemo(() => {
     return items.reduce((sum, item) => {
-      if (item.sale_unit === 'CENTO') {
-        return sum + (item.price * (item.quantity / 100));
-      } else if (item.sale_unit === 'KG') {
+      if (item.sale_unit === 'KG') {
         // Se quantity for em gramas (ex: 500, 1000)
         return sum + (item.price * (item.quantity / 1000));
       }
