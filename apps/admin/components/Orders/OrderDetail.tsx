@@ -153,6 +153,8 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       console.error('Erro ao adicionar item:', err);
       setError('Falha ao adicionar item.');
     }
+  };
+
   const handleSendSummaryToWhatsApp = async () => {
     if (!order || !order.customer_phone) return;
     
