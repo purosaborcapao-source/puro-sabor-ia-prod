@@ -23,7 +23,9 @@ interface Order {
   status: string;
   updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
+  total: number;
   notes?: string;
+  created_at: string | null;
 }
 
 interface PaymentEntry {
@@ -89,7 +91,9 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         status: orderData.status,
         updated_at: orderData.updated_at,
         payment_status: (orderData as any).payment_status || 'SINAL_PENDENTE',
+        total: orderData.total,
         notes: (orderData as any).notes || '',
+        created_at: orderData.created_at
       };
 
       setOrder(processedOrder);
