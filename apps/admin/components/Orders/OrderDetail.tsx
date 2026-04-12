@@ -9,6 +9,7 @@ import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
+import { ReferenceImages } from './ReferenceImages';
 import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText, Loader2 } from 'lucide-react';
 
 interface Order {
@@ -40,9 +41,10 @@ interface PaymentEntry {
 
 interface OrderDetailProps {
   orderId: string;
+  isCompact?: boolean;
 }
 
-export function OrderDetail({ orderId }: OrderDetailProps) {
+export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const { profile } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([]);
@@ -225,9 +227,9 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
   const pendingPayments = paymentEntries.filter((p) => p.status === 'AGUARDANDO_CONFIRMACAO');
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div className={isCompact ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-8"}>
       {/* Coluna Principal */}
-      <div className="lg:col-span-8 space-y-6">
+      <div className={isCompact ? "w-full space-y-6" : "lg:col-span-8 space-y-6"}>
         <AISuggestionPanel orderId={orderId} onSuggestionApplied={() => setRefreshKey(k => k + 1)} />
 
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
@@ -255,7 +257,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-200 dark:border-gray-700 pt-6">
+          <div className={`grid grid-cols-1 ${isCompact ? 'gap-6' : 'md:grid-cols-2 gap-6'} border-t border-gray-200 dark:border-gray-700 pt-6`}>
             <div>
               <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
                 📋 Informações do Pedido
@@ -327,6 +329,8 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <OrderItemList orderId={orderId} refreshKey={refreshKey} onItemRemoved={() => setRefreshKey(k => k + 1)} />
         </div>
+
+        <ReferenceImages orderId={orderId} customerId={order.customer_id} />
 
         {pendingPayments.length > 0 && canConfirmPayment && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
@@ -418,7 +422,7 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
       </div>
 
       {/* Coluna Lateral */}
-      <div className="lg:col-span-4 space-y-6">
+      <div className={isCompact ? "w-full space-y-6" : "lg:col-span-4 space-y-6"}>
         <div className="sticky top-8">
           <WhatsAppPanel phone={order.customer_phone || ''} customerId={order.customer_id} />
           <div className="mt-4 p-4 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 rounded-lg space-y-3">

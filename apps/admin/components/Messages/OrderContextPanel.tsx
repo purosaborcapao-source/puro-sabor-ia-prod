@@ -270,7 +270,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
           </>
         ) : (
           <div className="relative">
-            <OrderDetail orderId={selectedOrderId!} />
+            <OrderDetail orderId={selectedOrderId!} isCompact={true} />
           </div>
         )}
       </div>
