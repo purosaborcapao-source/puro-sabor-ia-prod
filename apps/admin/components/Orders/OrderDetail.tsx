@@ -360,14 +360,36 @@ export function OrderDetail({ orderId }: OrderDetailProps) {
               <button
                 onClick={async () => {
                   if (confirm(`Confirmar recebimento direto de ${saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}?`)) {
-                    await supabase.from('payment_entries').insert({
-                      order_id: orderId,
-                      type: 'SINAL', // By default treat it as Sinal/Saldo
-                      valor: saldoDue,
-                      status: 'CONFIRMADO',
-                      method: 'PIX'
-                    });
-                    setRefreshKey(k => k + 1);
+                    try {
+                      const supabaseToken = localStorage.getItem('supabase-auth-token')
+                      let token = ''
+                      if (supabaseToken) {
+                        token = JSON.parse(supabaseToken).access_token
+                      }
+
+                      const response = await fetch('/api/payments', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                          order_id: orderId,
+                          type: 'SINAL',
+                          valor: saldoDue,
+                          notes: 'Baixa Expressa / PIX'
+                        })
+                      })
+
+                      if (!response.ok) {
+                        const err = await response.json()
+                        throw new Error(err.error || 'Erro ao registrar pagamento')
+                      }
+                      
+                      setRefreshKey(k => k + 1);
+                    } catch (err: any) {
+                      alert('Erro ao confirmar pagamento: ' + err.message);
+                    }
                   }
                 }}
                 disabled={order.payment_status === 'QUITADO' || saldoDue === 0}
