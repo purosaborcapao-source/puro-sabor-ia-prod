@@ -364,7 +364,7 @@ async function createDraftOrder(
              order_id: order.id,
              product_id: item.product_id,
              quantity: item.quantity,
-             price_at_time: item.price,
+             unit_price: item.price,
              customizations: { notes: item.observation }
            });
          } else {
