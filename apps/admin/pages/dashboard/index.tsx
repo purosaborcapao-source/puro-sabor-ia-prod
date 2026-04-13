@@ -9,9 +9,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 
 interface DayMetricsData {
-  deliveryCount: number
-  totalDue: number
-  totalReceived: number
+  ordersToday: number
+  pendingOrders: number
+  newMessages: number
+  nextWeekOrders: number
 }
 
 export default function DashboardPage() {
@@ -28,7 +29,6 @@ export default function DashboardPage() {
     }
 
     if (!loading && user && profile) {
-      // Check if user has permission to access admin dashboard
       if (profile.role !== 'ADMIN' && profile.role !== 'GERENTE' && profile.role !== 'ATENDENTE') {
         router.push('/auth/login')
       }
@@ -37,13 +37,16 @@ export default function DashboardPage() {
 
   const loadPendenciasAndMetrics = useCallback(async () => {
     try {
-      // 1. Mensagens não respondidas (Simplificado para debug)
-      const { data: mensagens, error: msgErr } = await supabase
-        .from('messages')
-        .select('id')
-        .limit(10)
+      const todayStr = new Date().toISOString().split('T')[0]
+      const nextWeek = new Date()
+      nextWeek.setDate(nextWeek.getDate() + 7)
+      const nextWeekStr = nextWeek.toISOString().split('T')[0]
 
-      if (msgErr) console.error('❌ Erro Mensagens:', msgErr)
+      // 1. Mensagens não respondidas (conversas com status NEW)
+      const { data: newConversas } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('status', 'NEW')
 
       // 2. Pedidos pendentes
       const { data: pedidosPendentes } = await supabase
@@ -51,80 +54,60 @@ export default function DashboardPage() {
         .select('id')
         .eq('status', 'PENDENTE')
 
-      // 3. Sinais a receber (próx. 3 dias)
-      const threeDaysFromNow = new Date()
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
-
-      const { data: sinaisData } = await supabase
-        .from('orders')
-        .select('id')
-        .neq('payment_status', 'QUITADO')
-        .lte('delivery_date', threeDaysFromNow.toISOString().split('T')[0])
-        .gte('delivery_date', new Date().toISOString().split('T')[0])
-
-      const sinaisAReceber = sinaisData || []
-
-      // 4. Alterações solicitadas (não processadas)
+      // 3. Alterações solicitadas (não processadas - últimas 24h)
+      const yesterday = new Date()
+      yesterday.setDate(yesterday.getDate() - 1)
       const { data: changesData } = await supabase
         .from('order_changes')
         .select('id')
-        .limit(10) // Mock por enquanto, mas tabela existe
+        .gte('created_at', yesterday.toISOString())
+        .limit(10)
 
-      const alteracoes = changesData || []
+      // 4. Pedidos com problema - por enquanto retornando 0 (pode ser expandido)
+      // Esta funcionalidade pode ser implementada com uma coluna issue_type na tabela orders
 
-      // 5. Pagamentos aguardando confirmação
-      const { data: pagamentosData } = await supabase
-        .from('payment_entries')
-        .select('id')
-        .eq('status', 'AGUARDANDO_CONFIRMACAO')
-
-      const pagamentosAguardando = pagamentosData || []
-
-      // Atualizar pendências
+      // Atualizar pendências (apenas as que têm query válida)
       const updatedPendencias = basePendencias.map((p) => {
-        if (p.type === 'mensagens') return { ...p, count: mensagens?.length || 0 }
+        if (p.type === 'mensagens') return { ...p, count: newConversas?.length || 0 }
         if (p.type === 'pedidos') return { ...p, count: pedidosPendentes?.length || 0 }
-        if (p.type === 'sinais') return { ...p, count: sinaisAReceber?.length || 0 }
-        if (p.type === 'alteracoes') return { ...p, count: alteracoes?.length || 0 }
-        if (p.type === 'pagamentos') return { ...p, count: pagamentosAguardando.length }
+        if (p.type === 'alteracoes') return { ...p, count: changesData?.length || 0 }
+        if (p.type === 'problemas') return { ...p, count: 0 }
         return p
       })
       setPendencias(updatedPendencias)
 
-      // Números do dia
-      const todayStr = new Date().toISOString().split('T')[0]
-
-      // a. Pedidos de hoje (Volume Operacional)
-      const { data: todayOrders } = await supabase
+      // Métricas do dia
+      const { data: ordersToday } = await supabase
         .from('orders')
-        .select('total, payment_status')
+        .select('id')
         .eq('delivery_date', todayStr)
+        .neq('status', 'CANCELADO')
 
-      // b. Recebido hoje (Fluxo de Caixa)
-      // Somar pagamentos confirmados com 'confirmed_at' hoje
-      const { data: todayPayments } = await supabase
-        .from('payment_entries')
-        .select('valor')
-        .eq('status', 'CONFIRMADO')
-        .gte('confirmed_at', todayStr + 'T00:00:00')
-        .lte('confirmed_at', todayStr + 'T23:59:59')
+      const { data: ordersPending } = await supabase
+        .from('orders')
+        .select('id')
+        .eq('status', 'PENDENTE')
 
-      const deliveryCount = todayOrders?.length || 0
-      const totalVolume = todayOrders?.reduce((sum, o) => sum + (o.total || 0), 0) || 0
-      const totalReceived = todayPayments?.reduce((sum, p) => sum + (p.valor || 0), 0) || 0
-      
-      // A receber hoje (Saldo dos pedidos de hoje)
-      // Isso é complexo se não tivermos o total confirmado por pedido, 
-      // mas vamos aproximar ou simplificar para: totalVolume - totalReceived_daqueles_pedidos
-      const totalDue = Math.max(0, totalVolume - totalReceived)
+      const { data: messagesNew } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('status', 'NEW')
+
+      const { data: nextWeekOrders } = await supabase
+        .from('orders')
+        .select('id')
+        .gte('delivery_date', todayStr)
+        .lte('delivery_date', nextWeekStr)
+        .neq('status', 'CANCELADO')
 
       setDayMetrics({
-        deliveryCount,
-        totalDue,
-        totalReceived
+        ordersToday: ordersToday?.length || 0,
+        pendingOrders: ordersPending?.length || 0,
+        newMessages: messagesNew?.length || 0,
+        nextWeekOrders: nextWeekOrders?.length || 0
       })
     } catch (error) {
-      console.error('Erro ao carregar pendências:', error)
+      console.error('Erro ao carregar métricas:', error)
     } finally {
       setMetricsLoading(false)
     }
@@ -156,7 +139,6 @@ export default function DashboardPage() {
       </Head>
 
       <div className="min-h-screen bg-gray-50 dark:bg-[#050505]">
-        {/* Header Ops Center */}
         <header className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0A0A0A]">
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -171,28 +153,24 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-          
-          {/* Top Tier: Day Metrics (HUD) */}
           <section>
             {dayMetrics && (
               <DayMetrics
                 data={{
-                  ...dayMetrics,
-                  date: new Date().toISOString().split('T')[0]
+                  ordersToday: dayMetrics.ordersToday,
+                  pendingOrders: dayMetrics.pendingOrders,
+                  newMessages: dayMetrics.newMessages,
+                  nextWeekOrders: dayMetrics.nextWeekOrders
                 }}
               />
             )}
           </section>
 
-          {/* Grid Layout (2 cols Desktop) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            {/* Lado Esquerdo: Pendências (Mission Critical) */}
             <div className="lg:col-span-7 space-y-4">
-              <h2 className="text-xs font-black tracking-widest uppercase text-red-600 dark:text-red-500 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-4 bg-red-500"></span> AÇÕES CRÍTICAS
+              <h2 className="text-xs font-black tracking-widest uppercase text-orange-600 dark:text-orange-500 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-orange-500"></span> ATENÇÃO OPERACIONAL
               </h2>
               <PendenciasList
                 pendencias={pendencias}
@@ -200,9 +178,8 @@ export default function DashboardPage() {
               />
             </div>
 
-            {/* Lado Direito: Agendamento */}
             <div className="lg:col-span-5 space-y-4">
-               <h2 className="text-xs font-black tracking-widest uppercase text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
+              <h2 className="text-xs font-black tracking-widest uppercase text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-4 bg-gray-500"></span> CALENDÁRIO OPERACIONAL
               </h2>
               <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 shadow-sm p-4">
@@ -211,7 +188,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Command Dock (Ações Rápidas) */}
           <section className="pt-6 border-t border-gray-200 dark:border-gray-800 mt-8">
             <h2 className="text-[10px] font-black tracking-widest uppercase text-blue-600 dark:text-blue-500 mb-4">
               &gt;_ QUICK COMMANDS

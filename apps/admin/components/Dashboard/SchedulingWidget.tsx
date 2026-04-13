@@ -114,7 +114,7 @@ export function SchedulingWidget() {
                     </div>
                   ) : (
                     <div className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">
-                      <span className="text-gray-900 dark:text-white">{slot.ordersCount}</span>/{slot.max_orders} VENDIDOS
+                      <span className="text-gray-900 dark:text-white">{slot.ordersCount}</span>/{slot.max_orders} AGENDADOS
                       {slot.capacity > 0 && <span className="text-emerald-600 dark:text-emerald-500 ml-2">[{slot.capacity} LIVRES]</span>}
                     </div>
                   )}
