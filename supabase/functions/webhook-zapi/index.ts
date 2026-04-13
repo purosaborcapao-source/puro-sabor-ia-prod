@@ -20,14 +20,57 @@ function buildFallbackExternalId(phone: string, content: string, momment?: numbe
   return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
 }
 
-// Normaliza telefone para formato consistente (só dígitos); preserva IDs especiais (@lid, etc)
-function normalizePhone(phone: string): string {
-  // Remove sufixos de chat do WhatsApp (ex: @c.us, @s.whatsapp.net) para unificar a identidade
-  const clean = phone.split("@")[0];
-  // Preserva IDs especiais modernos (@lid) que não são números puros
-  if (phone.includes("@lid")) return phone;
-  // Para números normais, remove tudo que não for dígito
-  return clean.replace(/\D/g, "");
+// Normaliza telefone para formato consistente (só dígitos)
+// Retorna string vazia se o phone não for um número válido de cliente
+function normalizePhone(rawPhone: string): string {
+  // @lid é sempre um ID interno de chat do WhatsApp, nunca um número de cliente
+  if (rawPhone.includes("@lid")) return "";
+
+  // Remove sufixos de chat do WhatsApp (@c.us, @s.whatsapp.net, etc)
+  const clean = rawPhone.split("@")[0];
+  // Extrai apenas dígitos
+  const digits = clean.replace(/\D/g, "");
+
+  // Número muito curto: inválido
+  if (!digits || digits.length < 10) return "";
+
+  return digits;
+}
+
+// Tenta encontrar um customer pelo nome do chat (para mensagens OUTBOUND @lid)
+async function findCustomerByChatName(
+  supabase: ReturnType<typeof createClient>,
+  chatName?: string
+): Promise<{ id: string; name: string } | null> {
+  if (!chatName || chatName.trim().length < 2) return null;
+
+  // Busca exata por nome (case-insensitive)
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, name")
+    .ilike("name", chatName.trim())
+    .limit(1)
+    .maybeSingle();
+
+  if (!error && data) {
+    console.log(`✅ [findCustomerByChatName] Encontrado por nome: "${chatName}" → ${data.id}`);
+    return data;
+  }
+
+  // Busca parcial: o chatName pode ser apelido ou parte do nome
+  const { data: partial, error: partialError } = await supabase
+    .from("customers")
+    .select("id, name")
+    .ilike("name", `%${chatName.trim()}%`)
+    .limit(1)
+    .maybeSingle();
+
+  if (!partialError && partial) {
+    console.log(`✅ [findCustomerByChatName] Encontrado por nome parcial: "${chatName}" → ${partial.id}`);
+    return partial;
+  }
+
+  return null;
 }
 
 export async function handleZapiWebhook(request: Request): Promise<Response> {
@@ -54,10 +97,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
-    // Normalizar telefone para formato consistente (só dígitos)
-    const normalizedPhone = normalizePhone(parsed.phone);
-    
-    // Filtrar grupos e listas de broadcast
+    // Filtrar grupos e listas de broadcast (antes de qualquer outra lógica)
     if (parsed.phone.includes("@g.us") || parsed.phone.includes("@broadcast")) {
       console.log(`ℹ️ [webhook-zapi] Ignorando mensagem de grupo/lista: ${parsed.phone}`);
       return new Response(JSON.stringify({ success: true, ignored: true, reason: "group_or_list_ignored" }), {
@@ -67,6 +107,20 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     }
 
     const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
+    const isLidPhone = parsed.phone.includes("@lid");
+
+    // Normalizar telefone para formato consistente (só dígitos)
+    // Para @lid, normalizePhone retorna "" — tratamos abaixo via chatName
+    const normalizedPhone = normalizePhone(parsed.phone);
+
+    // Validação: INBOUND sem número válido → ignorar
+    if (!normalizedPhone && direction === "INBOUND") {
+      console.log(`ℹ️ [webhook-zapi] INBOUND sem número válido: ${parsed.phone}`);
+      return new Response(
+        JSON.stringify({ success: true, ignored: true, reason: "invalid_phone_inbound" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
     // ─── Camada 1: Construir external_id robusto ───────────────────────────
     // Usa messageId real da Z-API quando disponível; caso contrário, gera fallback
@@ -132,35 +186,56 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     });
 
     // 1. Find or create customer
-    // Para OUTBOUND (mensagens do апarelho), tentamos vincular a um customer existente
-    // Se não existir, tentamos criar para garantir a vinculação
-    const customer = await findOrCreateCustomer(
-      supabase, 
-      normalizedPhone, 
-      parsed.senderName || parsed.chatName,
-      direction === "INBOUND" // allowSearchOnly: true para OUTBOUND (só buscar), false para INBOUND (criar se não existir)
-    );
+    // Estratégia de resolução em cascata:
+    // A) Para OUTBOUND @lid: o phone não é o número do cliente → buscar por chatName
+    // B) Para OUTBOUND com número: buscar por phone exato ou parcial (não criar)
+    // C) Para INBOUND: buscar por phone; criar se não existir
+    let activeCustomer: { id: string; name: string } | null = null;
+    let resolvedPhone = normalizedPhone; // phone que vai para a mensagem no banco
 
-    if (!customer && direction === "OUTBOUND") {
-      console.log(`ℹ️ [webhook-zapi] Tentando buscar customer por phone parcial para OUTBOUND: ${normalizedPhone}`);
-      const customerByPartialPhone = await findCustomerByPartialPhone(supabase, normalizedPhone);
-      if (customerByPartialPhone) {
-        console.log(`✅ [webhook-zapi] Customer encontrado por phone parcial: ${customerByPartialPhone.id}`);
-      } else {
-        console.log(`ℹ️ [webhook-zapi] Customer não encontrado para OUTBOUND: ${normalizedPhone}. Ignorando.`);
+    if (direction === "OUTBOUND" && isLidPhone) {
+      // @lid: buscar customer pelo nome do contato (chatName)
+      console.log(`🔍 [webhook-zapi] OUTBOUND @lid — tentando vincular pelo chatName: "${parsed.chatName}"`);
+      activeCustomer = await findCustomerByChatName(supabase, parsed.chatName);
+
+      if (!activeCustomer) {
+        console.log(`ℹ️ [webhook-zapi] OUTBOUND @lid sem vínculo por nome: chatName="${parsed.chatName}". Ignorando.`);
+        return new Response(
+          JSON.stringify({ success: true, ignored: true, reason: "outbound_lid_no_customer_match" }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Usar o phone do customer encontrado para gravar na mensagem (consistência)
+      resolvedPhone = activeCustomer.id; // placeholder — sobrescrito abaixo com phone real
+      const { data: cData } = await supabase
+        .from("customers")
+        .select("phone")
+        .eq("id", activeCustomer.id)
+        .maybeSingle();
+      if (cData?.phone) resolvedPhone = cData.phone;
+
+    } else if (direction === "OUTBOUND") {
+      // Número normal OUTBOUND: buscar por phone exato ou parcial, NÃO criar
+      const customer = await findOrCreateCustomer(supabase, normalizedPhone, parsed.senderName || parsed.chatName, true);
+      activeCustomer = customer || await findCustomerByPartialPhone(supabase, normalizedPhone);
+
+      if (!activeCustomer) {
+        console.log(`ℹ️ [webhook-zapi] OUTBOUND sem customer: ${normalizedPhone}. Ignorando.`);
         return new Response(
           JSON.stringify({ success: true, ignored: true, reason: "outbound_customer_not_found" }),
-          { status: 200, headers: { "Content-Type": "application/json" },
-        });
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
       }
+    } else {
+      // INBOUND: buscar ou criar customer
+      activeCustomer = await findOrCreateCustomer(supabase, normalizedPhone, parsed.senderName || parsed.chatName, false);
     }
 
-    // 2. Inserir mensagem simples (sem upsert para evitar erros de schema)
-    // Usar o customer encontrado (pode ser findOrCreateCustomer ou findCustomerByPartialPhone)
-    const activeCustomer = customer || await findCustomerByPartialPhone(supabase, normalizedPhone);
+    // 2. Inserir mensagem
     
     if (!activeCustomer) {
-      console.log(`⚠️ [webhook-zapi] Nenhum customer encontrado para vincular: ${normalizedPhone}`);
+      console.log(`⚠️ [webhook-zapi] Nenhum customer encontrado para vincular: ${resolvedPhone || parsed.phone}`);
       return new Response(
         JSON.stringify({ success: true, ignored: true, reason: "no_customer_found" }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -170,7 +245,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     const insertData = {
       external_id: externalId,
       customer_id: activeCustomer.id,
-      phone: normalizedPhone,
+      phone: resolvedPhone, // phone real do cliente (não o @lid)
       direction,
       type: messageType,
       content,
@@ -180,6 +255,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
         zapi_message_id: parsed.messageId,
         sender_name: parsed.senderName,
         fromMe: parsed.fromMe,
+        original_phone: parsed.phone, // preserva o phone original para debug
       },
       zapi_status: "DELIVERED" as const,
     };
@@ -213,7 +289,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
           body: JSON.stringify({
             message_id: insertedMsg.id,
             customer_id: activeCustomer.id,
-            phone: normalizedPhone,
+            phone: resolvedPhone,
             text: content,
           }),
         }
