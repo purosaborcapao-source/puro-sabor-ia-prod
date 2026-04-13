@@ -1,10 +1,11 @@
 import React from "react";
+import { Mic } from "lucide-react";
 
 interface Message {
   id: string;
   direction: "INBOUND" | "OUTBOUND";
   content: string;
-  type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
+  type: "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT" | "VOICE";
   media_url?: string;
   created_at: string | null;
   payload?: any;
@@ -51,16 +52,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
             )}
           </div>
-        ) : message.type === "AUDIO" && message.media_url ? (
+        ) : (message.type === "AUDIO" || message.type === "VOICE") && message.media_url ? (
           <div className="mb-2">
             <audio
               controls
               src={message.media_url}
               className="w-full max-w-[280px] h-10"
             />
-            {message.content && message.content !== "[Áudio]" && (
+            {message.content && message.content !== "[Áudio]" && message.content !== "[Voice Message]" && (
               <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
             )}
+          </div>
+        ) : (message.type === "AUDIO" && !message.media_url) ? (
+          <div className="mb-2 flex items-center gap-2">
+            <Mic className="w-5 h-5 text-zinc-400" />
+            <span className="text-sm text-zinc-500">Áudio</span>
           </div>
         ) : (
           <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
