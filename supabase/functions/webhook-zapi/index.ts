@@ -61,7 +61,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
-    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
+    const direction = parsed.fromMe ? "OUTGOING" : "INBOUND";
 
     // ─── Camada 1: Construir external_id robusto ───────────────────────────
     // Usa messageId real da Z-API quando disponível; caso contrário, gera fallback
@@ -143,47 +143,41 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
-    // 2. Salvar mensagem com external_id garantido + content_hash no payload
-    const { data: messageRecord, error: messageError } = await supabase
-      .from("messages")
-      .upsert({
+    // 2. Inserir mensagem simples (sem upsert para evitar erros de schema)
+    const insertData = {
+      customer_id: customer.id,
+      phone: normalizedPhone,
+      direction,
+      type: messageType,
+      content,
+      payload: {
+        raw_text: content,
         external_id: externalId,
-        customer_id: customer.id,
-        phone: normalizedPhone,
-        direction,
-        type: messageType,
-        content,
-        media_url,
-        sender_name: parsed.senderName || parsed.chatName,
-        payload: {
-          raw_text: content,
-          content_hash: contentHash,
-          zapi_message_id: parsed.messageId,
-          zapi_id: parsed.zaapId,
-          sender_name: parsed.senderName,
-          fromMe: parsed.fromMe,
-        },
-        zapi_status: "DELIVERED",
-      }, { onConflict: "external_id" })
-      .select()
-      .maybeSingle();
+        zapi_message_id: parsed.messageId,
+        sender_name: parsed.senderName,
+        fromMe: parsed.fromMe,
+      },
+    };
+    
+    console.log("💾 [webhook-zapi] Inserindo:", JSON.stringify(insertData).slice(0, 200));
+    const messageResult = await supabase.from("messages").insert(insertData).select().maybeSingle();
+    const messageError = messageResult.error;
 
     if (messageError) {
       console.error("❌ [webhook-zapi] Erro ao inserir mensagem:", messageError);
       throw messageError;
     }
 
-    if (!messageRecord) {
-      // Upsert retornou null: conflito de external_id detectado na camada de BD
-      console.log(`⚡ [webhook-zapi] Duplicata detectada (DB constraint): ${externalId}`);
+    if (!messageResult?.data) {
+      console.log(`⚡ [webhook-zapi] Falha ao obter resultado: ${externalId}`);
       return new Response(
-        JSON.stringify({ success: true, status: "already_processed_db_constraint" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, status: "insert_failed" }),
+        { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
     // 3. Disparar processamento de IA apenas para mensagens INBOUND de texto genuinamente novas
-    if (type === "text" && direction === "INBOUND") {
+    if (type === "text" && direction === "INBOUND" && messageResult.data) {
       fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-message`,
         {
@@ -193,7 +187,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
             Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
           },
           body: JSON.stringify({
-            message_id: messageRecord.id,
+            message_id: messageResult.data[0]?.id,
             customer_id: customer.id,
             phone: normalizedPhone,
             text: content,
@@ -206,28 +200,30 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       JSON.stringify({
         success: true,
         status: "processed",
-        message_id: messageRecord.id,
         customer_id: customer.id,
         type,
         direction,
-        external_id: externalId,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorStack = error instanceof Error ? error.stack : "";
+    
     if (error instanceof z.ZodError) {
-      console.error("❌ [webhook-zapi] Validação falhou:", error.errors);
+      console.error("❌ [webhook-zapi] Validação falhou:", JSON.stringify(error.errors));
       return new Response(
         JSON.stringify({ error: "Invalid payload", details: error.errors }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    console.error("❌ [webhook-zapi] Erro:", error);
+    console.error(`❌ [webhook-zapi] Erro:`, error);
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : "Internal server error",
+        error: errorMessage,
+        details: String(error),
       }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
