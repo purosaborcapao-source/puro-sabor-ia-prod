@@ -20,10 +20,14 @@ function buildFallbackExternalId(phone: string, content: string, momment?: numbe
   return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
 }
 
-// Normaliza telefone se for um número puro; preserva IDs especiais (@lid, @g.us, etc)
+// Normaliza telefone para formato consistente (só dígitos); preserva IDs especiais (@lid, etc)
 function normalizePhone(phone: string): string {
-  if (phone.includes("@")) return phone;
-  return phone.replace(/\D/g, "");
+  // Remove sufixos de chat do WhatsApp (ex: @c.us, @s.whatsapp.net) para unificar a identidade
+  const clean = phone.split("@")[0];
+  // Preserva IDs especiais modernos (@lid) que não são números puros
+  if (phone.includes("@lid")) return phone;
+  // Para números normais, remove tudo que não for dígito
+  return clean.replace(/\D/g, "");
 }
 
 export async function handleZapiWebhook(request: Request): Promise<Response> {
@@ -133,7 +137,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       supabase, 
       normalizedPhone, 
       parsed.senderName || parsed.chatName,
-      direction === "OUTBOUND" // allowSearchOnly
+      false // Permitir criação de cliente mesmo em mensagens OUTBOUND para garantir vinculação
     );
 
     if (!customer) {
@@ -163,15 +167,14 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     };
     
     console.log("💾 [webhook-zapi] Inserindo:", JSON.stringify(insertData).slice(0, 200));
-    const messageResult = await supabase.from("messages").insert(insertData).select().maybeSingle();
-    const messageError = messageResult.error;
+    const { data: insertedMsg, error: messageError } = await supabase.from("messages").insert(insertData).select().single();
 
     if (messageError) {
       console.error("❌ [webhook-zapi] Erro ao inserir mensagem:", messageError);
       throw messageError;
     }
 
-    if (!messageResult?.data) {
+    if (!insertedMsg) {
       console.log(`⚡ [webhook-zapi] Falha ao obter resultado: ${externalId}`);
       return new Response(
         JSON.stringify({ success: false, status: "insert_failed" }),
@@ -180,7 +183,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     }
 
     // 3. Disparar processamento de IA apenas para mensagens INBOUND de texto genuinamente novas
-    if (type === "text" && direction === "INBOUND" && messageResult.data) {
+    if (type === "text" && direction === "INBOUND" && insertedMsg) {
       fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-message`,
         {
@@ -190,7 +193,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
             Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
           },
           body: JSON.stringify({
-            message_id: messageResult.data[0]?.id,
+            message_id: insertedMsg.id,
             customer_id: customer.id,
             phone: normalizedPhone,
             text: content,
