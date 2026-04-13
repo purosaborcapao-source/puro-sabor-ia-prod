@@ -20,6 +20,11 @@ function buildFallbackExternalId(phone: string, content: string, momment?: numbe
   return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
 }
 
+// Normaliza telefone: remove tudo que não é dígito
+function normalizePhone(phone: string): string {
+  return phone.replace(/\D/g, "");
+}
+
 export async function handleZapiWebhook(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     return new Response(
@@ -34,17 +39,20 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     // Validate with real Z-API schema
     const parsed = ZapiWebhookSchema.parse(body);
 
-    // Ignorar eventos que não são mensagens de entrada de conteúdo
-    if (!parsed.isMessage && !parsed.text && !parsed.image && !parsed.audio && !parsed.document) {
-      return new Response(JSON.stringify({ success: true, ignored: true, reason: "not_a_message_event" }), {
+    // Extrair conteúdo primeiro - se não houver conteúdo, ignorar
+    const { content, type, media_url } = extractMessageContent(parsed);
+    if (!content || content === "[Mensagem não suportada]") {
+      console.log(`ℹ️ [webhook-zapi] Payload sem conteúdo reconhecível, ignorando:`, JSON.stringify(body).slice(0, 200));
+      return new Response(JSON.stringify({ success: true, ignored: true, reason: "no_content" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // ─── Camada 0: Filtragem de Grupos, Listas e Broadcasts ───────────────
-    // Evita processar mensagens de grupos ou listas de transmissão que geram "leads fantasma"
-    // Mantemos @lid pois são identificadores de contatos legítimos no WhatsApp
+    // Normalizar telefone para formato consistente (só dígitos)
+    const normalizedPhone = normalizePhone(parsed.phone);
+    
+    // Filtrar grupos e listas de broadcast
     if (parsed.phone.includes("@g.us") || parsed.phone.includes("@broadcast")) {
       console.log(`ℹ️ [webhook-zapi] Ignorando mensagem de grupo/lista: ${parsed.phone}`);
       return new Response(JSON.stringify({ success: true, ignored: true, reason: "group_or_list_ignored" }), {
@@ -53,7 +61,6 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
-    const { content, type, media_url } = extractMessageContent(parsed);
     const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
     // ─── Camada 1: Construir external_id robusto ───────────────────────────
@@ -88,15 +95,16 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     // ─── Camada 3: Content dedup — mesma mensagem nos últimos 30 segundos ──
     // Protege contra retry interno da Z-API que gera um messageId diferente
     // para exatamente o mesmo conteúdo (ex: falha e reenvio automático).
-    const contentHash = simpleHash(`${parsed.phone}:${content}:${type}`);
+    const contentHash = simpleHash(`${normalizedPhone}:${content}:${type}`);
     const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
+    const messageType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT" | "VIDEO";
 
     const { data: contentDuplicate } = await supabase
       .from("messages")
       .select("id")
-      .eq("phone", parsed.phone)
+      .eq("phone", normalizedPhone)
       .eq("direction", direction)
-      .eq("type", type.toUpperCase())
+      .eq("type", messageType)
       .eq("content", content)
       .gte("created_at", thirtySecondsAgo)
       .limit(1)
@@ -110,9 +118,9 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       );
     }
 
-    // ─── Processamento normal a partir daqui ─────────────────────────────
+// ─── Processamento normal a partir daqui ─────────────────────────────
     console.log("🔄 [webhook-zapi] Mensagem nova:", {
-      phone: parsed.phone,
+      phone: normalizedPhone,
       type,
       externalId,
       content: content.substring(0, 60),
@@ -122,17 +130,17 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     // Se for OUTBOUND (aparelho), não criamos novo customer/lead. Apenas vinculamos se já existir.
     const customer = await findOrCreateCustomer(
       supabase, 
-      parsed.phone, 
+      normalizedPhone, 
       parsed.senderName || parsed.chatName,
       direction === "OUTBOUND" // allowSearchOnly
     );
 
     if (!customer) {
-      console.log(`ℹ️ [webhook-zapi] Customer não encontrado para mensagem OUTBOUND: ${parsed.phone}. Ignorando.`);
+      console.log(`ℹ️ [webhook-zapi] Customer não encontrado para mensagem OUTBOUND: ${normalizedPhone}. Ignorando.`);
       return new Response(
         JSON.stringify({ success: true, ignored: true, reason: "outbound_customer_not_found" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
+        { status: 200, headers: { "Content-Type": "application/json" },
+      });
     }
 
     // 2. Salvar mensagem com external_id garantido + content_hash no payload
@@ -141,22 +149,22 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       .upsert({
         external_id: externalId,
         customer_id: customer.id,
-        phone: parsed.phone,
+        phone: normalizedPhone,
         direction,
-        type: type.toUpperCase() as any,
+        type: messageType,
         content,
         media_url,
         sender_name: parsed.senderName || parsed.chatName,
         payload: {
           raw_text: content,
-          content_hash: contentHash,         // armazenado para content dedup futuro
+          content_hash: contentHash,
           zapi_message_id: parsed.messageId,
           zapi_id: parsed.zaapId,
           sender_name: parsed.senderName,
           fromMe: parsed.fromMe,
         },
         zapi_status: "DELIVERED",
-      }, { onConflict: "external_id" })     // Camada 4: proteção contra race conditions
+      }, { onConflict: "external_id" })
       .select()
       .maybeSingle();
 
@@ -187,7 +195,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
           body: JSON.stringify({
             message_id: messageRecord.id,
             customer_id: customer.id,
-            phone: parsed.phone,
+            phone: normalizedPhone,
             text: content,
           }),
         }

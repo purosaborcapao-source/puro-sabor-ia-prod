@@ -25,12 +25,12 @@ export const ZapiWebhookSchema = z.object({
   messageId: z.string().optional(),
   phone: phoneSchema,
   fromMe: z.boolean().optional().default(false),
-  momment: z.number().optional(), // Z-API typo: "momment" (not "moment")
+  momment: z.number().optional(), // Z-API typo: "moment"
   type: z.string().optional().default("text"),
   chatName: z.string().optional(),
   senderName: z.string().optional(),
-  // text messages
-  text: ZapiTextSchema.optional(),
+  // text messages - Z-API pode enviar como text.message ou apenas text
+  text: z.union([ZapiTextSchema, z.string()]).optional(),
   // image messages
   image: ZapiMediaSchema.optional(),
   // audio messages
@@ -54,8 +54,17 @@ export function extractMessageContent(payload: ZapiWebhookPayload): {
   type: "text" | "image" | "audio" | "document" | "video";
   media_url: string | null;
 } {
-  if (payload.text?.message) {
+  // Handle text as object with message field
+  if (typeof payload.text === "object" && payload.text?.message) {
     return { content: payload.text.message, type: "text", media_url: null };
+  }
+  // Handle text as string directly
+  if (typeof payload.text === "string") {
+    return { content: payload.text, type: "text", media_url: null };
+  }
+  // Handle legacy field: direct message field
+  if ((payload as any).message) {
+    return { content: (payload as any).message, type: "text", media_url: null };
   }
   if (payload.image?.imageUrl) {
     return {
@@ -78,9 +87,9 @@ export function extractMessageContent(payload: ZapiWebhookPayload): {
       media_url: payload.document.documentUrl,
     };
   }
-  if (payload.video?.videoUrl as any) {
+  if ((payload.video as any)?.videoUrl) {
     return {
-      content: payload.video?.caption || "[Vídeo]",
+      content: (payload.video as any)?.caption || "[Vídeo]",
       type: "video",
       media_url: (payload.video as any)?.videoUrl || null,
     };
