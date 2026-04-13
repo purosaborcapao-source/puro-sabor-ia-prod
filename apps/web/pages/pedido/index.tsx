@@ -5,6 +5,7 @@ import { CategoryTabs } from '../../components/catalog/CategoryTabs';
 import { ProductCard } from '../../components/catalog/ProductCard';
 import { ProductModal } from '../../components/catalog/ProductModal';
 import { CartDrawer } from '../../components/catalog/CartDrawer';
+import { MobileCartBar } from '../../components/catalog/MobileCartBar';
 import { useProducts, Product } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 
@@ -43,6 +44,7 @@ export default function PedidoPage() {
 
       <CatalogHeader
         cartCount={items.length}
+        totalValue={total}
         onOpenCart={() => setIsCartOpen(true)}
       />
 
@@ -77,13 +79,20 @@ export default function PedidoPage() {
           </div>
         ) : (
           <section className="space-y-3">
-            {(productsByCategory[activeCategory] || []).map((product: Product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSelect={handleSelectProduct}
-              />
-            ))}
+            {(productsByCategory[activeCategory] || []).map((product: Product) => {
+              const quantity = items
+                .filter(item => item.productId === product.id)
+                .reduce((sum, item) => sum + item.quantity, 0);
+
+              return (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  quantity={quantity}
+                  onSelect={handleSelectProduct}
+                />
+              );
+            })}
           </section>
         )}
       </main>
@@ -109,6 +118,13 @@ export default function PedidoPage() {
         onRemoveItem={removeItem}
         total={total}
         onCheckout={() => {}}
+      />
+
+      {/* Fixed Mobile Bar */}
+      <MobileCartBar
+        itemCount={items.length}
+        totalValue={total}
+        onOpenCart={() => setIsCartOpen(true)}
       />
     </div>
   );

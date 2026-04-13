@@ -11,7 +11,7 @@ interface OrderContextPanelProps {
 export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   customerId,
 }) => {
-  const [activeTab, setActiveTab] = useState<"orders" | "details">("orders");
+  const [activeTab, setActiveTab] = useState<"order" | "history" | "management">("order");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +44,20 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      const fetchedOrders = data || [];
+      setOrders(fetchedOrders);
+
+      // Auto-selecionar pedido ativo (Pendente ou Confirmado)
+      const activeOrder = fetchedOrders.find(o => o.status === 'PENDENTE' || o.status === 'CONFIRMADO');
+      if (activeOrder) {
+        setSelectedOrderId(activeOrder.id);
+        setActiveTab("order");
+      } else if (fetchedOrders.length > 0) {
+        setSelectedOrderId(fetchedOrders[0].id);
+        setActiveTab("order");
+      } else {
+        setActiveTab("management");
+      }
 
       // Buscar clientes e notas
       const { data: customerData } = await supabase
@@ -115,33 +128,99 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <button
-          onClick={() => setActiveTab("orders")}
+          onClick={() => setActiveTab("order")}
           className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-            activeTab === "orders"
+            activeTab === "order"
               ? "border-blue-600 text-blue-600"
               : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
           }`}
         >
-          Resumo do Lead
+          Pedido
         </button>
-        {selectedOrderId && (
-          <button
-            onClick={() => setActiveTab("details")}
-            className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "details"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-            }`}
-          >
-            Detalhes do Pedido
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab("history")}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "history"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Histórico
+        </button>
+        <button
+          onClick={() => setActiveTab("management")}
+          className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === "management"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          }`}
+        >
+          Lead
+        </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {activeTab === "orders" ? (
-          <>
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === "order" ? (
+          <div className="space-y-4">
+            {selectedOrderId ? (
+              <OrderDetail orderId={selectedOrderId} isCompact={true} />
+            ) : (
+              <div className="text-center py-12">
+                <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500 mb-4">Nenhum pedido ativo para este cliente.</p>
+                <Link 
+                  href={`/dashboard/orders/new?customer=${customerId}`}
+                  className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  target="_blank"
+                >
+                  <Plus className="w-5 h-5" />
+                  Criar Pedido Agora
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : activeTab === "history" ? (
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Histórico de Pedidos
+            </h3>
+            {orders.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4 italic">Nenhum pedido anterior.</p>
+            ) : (
+              <div className="space-y-3">
+                {orders.map((order) => (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      setSelectedOrderId(order.id);
+                      setActiveTab("order");
+                    }}
+                    className={`bg-white dark:bg-gray-800 rounded-lg p-4 border transition-all cursor-pointer hover:shadow-md ${selectedOrderId === order.id ? 'border-blue-500 ring-1 ring-blue-500/20' : 'border-gray-200 dark:border-gray-700'}`}
+                  >
+                    <div className="flex justify-between items-start mb-1">
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">
+                        #{order.order_number || order.number}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        order.status === 'PENDENTE' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs text-gray-500">
+                      <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR") : 'Sem data'}</span>
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {order.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-6">
             {/* Info do Cliente Rápida */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                <div className="flex justify-between items-start mb-2">
@@ -155,16 +234,19 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                  </div>
                </div>
                {customerNotes && (
-                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">
-                   <span className="font-semibold">Notas Gerais:</span> {customerNotes}
-                 </p>
+                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                   <p className="text-[10px] text-gray-400 uppercase mb-1">Notas Gerais do Lead</p>
+                   <p className="text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-900 rounded italic">
+                     "{customerNotes}"
+                   </p>
+                 </div>
                )}
             </div>
 
             {/* Ações de Estado do Atendimento */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-900 shadow-sm">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                Estado do Atendimento
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-blue-200 dark:border-blue-900">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 font-bold">
+                Status da Conversa
               </h3>
               <div className="grid grid-cols-1 gap-2">
                  <button
@@ -177,85 +259,27 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                    onClick={() => handleUpdateStatus('WAITING_ORDER')}
                    className={`text-xs py-2 px-3 rounded text-left transition-colors font-medium border ${convStatus === 'WAITING_ORDER' ? 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/30' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
                  >
-                   📋 Aguardando Cliente (Decisão/Pedido)
+                   📋 Aguardando Cliente
                  </button>
-                 <div className="flex gap-2 w-full">
-                    <button
-                      onClick={() => handleUpdateStatus('RESOLVED')}
-                      className={`flex-1 text-xs py-2 px-3 rounded text-center transition-colors font-medium border ${convStatus === 'RESOLVED' ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/30' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
-                    >
-                      ✅ Resolvido
-                    </button>
-                    <Link 
-                      href={`/dashboard/orders/new?customer=${customerId}`}
-                      className="flex-1 flex items-center justify-center gap-1 py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
-                      target="_blank"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Novo Pedido
-                    </Link>
-                 </div>
+                 <button
+                   onClick={() => handleUpdateStatus('RESOLVED')}
+                   className={`text-xs py-2 px-3 rounded text-left transition-colors font-medium border ${convStatus === 'RESOLVED' ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/30' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}
+                 >
+                   ✅ Resolvido / Finalizado
+                 </button>
               </div>
-            </div>
-
-            {/* Pedidos Recentes */}
-            <div>
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                Pedidos Recentes
-              </h3>
-              {loading ? (
-                <p className="text-sm text-gray-500">Carregando...</p>
-              ) : orders.length === 0 ? (
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 text-center">
-                  <p className="text-sm text-gray-500">Nenhum pedido encontrado</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      onClick={() => {
-                        setSelectedOrderId(order.id);
-                        setActiveTab("details");
-                      }}
-                      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-400 cursor-pointer transition-all hover:shadow-md"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          #{order.number}
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          order.status === 'PENDENTE' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
-                        }`}>
-                          {order.status}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-xs text-gray-600 dark:text-gray-400">
-                        <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR") : 'N/A'}</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">
-                          {order.total.toLocaleString("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Notas Internas Editáveis */}
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Notas Internas (Para Operadoras)
+                  Notas Internas
                 </h3>
                 <button 
                   onClick={handleSaveInternalNotes}
                   disabled={savingNotes}
                   className="text-white bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-[10px] uppercase font-bold flex items-center gap-1 disabled:opacity-50"
-                  title="Salvar"
                 >
                   <Save className="w-3 h-3" /> {savingNotes ? "..." : "Salvar"}
                 </button>
@@ -263,14 +287,10 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
               <textarea
                 value={internalNotes}
                 onChange={(e) => setInternalNotes(e.target.value)}
-                placeholder="Anotações do plantão, preferências momentâneas, etc..."
-                className="w-full h-24 p-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Anotações internas sobre este lead..."
+                className="w-full h-32 p-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded resize-none focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
-          </>
-        ) : (
-          <div className="relative">
-            <OrderDetail orderId={selectedOrderId!} isCompact={true} />
           </div>
         )}
       </div>

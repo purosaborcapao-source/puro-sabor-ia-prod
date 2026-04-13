@@ -24,6 +24,7 @@ export const ZapiWebhookSchema = z.object({
   zaapId: z.string().optional(),
   messageId: z.string().optional(),
   phone: phoneSchema,
+  fromMe: z.boolean().optional().default(false),
   momment: z.number().optional(), // Z-API typo: "momment" (not "moment")
   type: z.string().optional().default("text"),
   chatName: z.string().optional(),

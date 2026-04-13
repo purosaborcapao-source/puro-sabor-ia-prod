@@ -22,6 +22,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
     null
   );
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"ALL" | "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED">("NEW");
@@ -156,8 +157,10 @@ export const MessageInbox = React.memo(function MessageInbox() {
   }, [loadChats]);
 
   const filteredChats = chats.filter((chat) => {
-    if (filter === "ALL") return true;
-    return chat.status === filter;
+    const matchesFilter = filter === "ALL" || chat.status === filter;
+    const matchesSearch = chat.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          chat.phone.includes(searchTerm);
+    return matchesFilter && matchesSearch;
   });
 
   if (loading) {
@@ -208,6 +211,18 @@ export const MessageInbox = React.memo(function MessageInbox() {
             >
               <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
+          </div>
+
+          {/* Busca por Nome */}
+          <div className="mb-4 relative">
+            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por nome do cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
 
           {/* Filtros de Status */}

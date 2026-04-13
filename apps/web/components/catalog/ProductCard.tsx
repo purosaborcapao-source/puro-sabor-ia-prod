@@ -4,10 +4,11 @@ import { Plus, Info } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
+  quantity: number;
   onSelect: (product: Product) => void;
 }
 
-export function ProductCard({ product, onSelect }: ProductCardProps) {
+export function ProductCard({ product, quantity, onSelect }: ProductCardProps) {
   const formatPrice = (price: number) => {
     return price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
@@ -32,8 +33,15 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
             <Info className="w-12 h-12" />
           </div>
         )}
-        <div className="absolute top-2 left-2 bg-[var(--primary-dark)] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter">
-          {product.category}
+        <div className="absolute top-2 left-2 flex flex-col gap-1 items-start">
+          <div className="bg-[var(--primary-dark)] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">
+            {product.category}
+          </div>
+          {quantity > 0 && (
+            <div className="bg-[var(--primary-paprica)] text-white text-[11px] font-black w-7 h-7 flex items-center justify-center rounded-lg shadow-md border-2 border-white animate-in zoom-in duration-300">
+              {quantity}x
+            </div>
+          )}
         </div>
       </div>
 

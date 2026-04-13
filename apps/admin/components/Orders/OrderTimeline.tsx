@@ -33,9 +33,9 @@ export const OrderTimeline = React.memo(function OrderTimeline({ filters = {} }:
       let query = supabase
         .from('orders')
         .select(`
-          id, number, customer_id, delivery_date, total, status, payment_status, sinal_valor,
-          customers:customer_id(id,name),
-          order_items(id,product_id,quantity),
+          id, number, order_number, customer_id, delivery_date, total, status, payment_status,
+          customers:customer_id(id, name),
+          order_items(id,product_id,quantity, products:product_id(name)),
           order_changes(id, status, is_ai_suggestion)
         `)
         .neq('status', 'CANCELADO')
@@ -49,22 +49,33 @@ export const OrderTimeline = React.memo(function OrderTimeline({ filters = {} }:
       const { data, error: err } = await query.range(0, 100);
       if (err) throw err;
 
-      let processedOrders: OrderCompact[] = (data || []).map((order: any) => ({
-        id: order.id,
-        number: order.order_number || order.number,
-        customer_name: order.customers?.name || 'N/A',
-        product_name: order.order_items?.length > 0 ? `${order.order_items.length} item(s)` : 'N/A',
-        delivery_date: order.delivery_date,
-        total: order.total,
-        status: order.status,
-        payment_status: order.payment_status || 'SINAL_PENDENTE',
-        has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
-      }));
+      let processedOrders: OrderCompact[] = (data || []).map((order: any) => {
+        const itemNames = order.order_items?.map((i: any) => i.products?.name).filter(Boolean) || [];
+        const productName = itemNames.length === 1 
+          ? itemNames[0] 
+          : itemNames.length > 1 
+            ? `${itemNames.length} itens (${itemNames[0]}...)`
+            : 'N/A';
+
+        return {
+          id: order.id,
+          number: order.order_number || order.number,
+          customer_name: order.customers?.name || 'N/A',
+          product_name: productName,
+          delivery_date: order.delivery_date,
+          total: order.total,
+          status: order.status,
+          payment_status: order.payment_status || 'SINAL_PENDENTE',
+          has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
+        };
+      });
 
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase();
-        processedOrders = processedOrders.filter(
-          (o) => o.number.toLowerCase().includes(searchLower) || o.customer_name?.toLowerCase().includes(searchLower)
+        const query = filters.search.toLowerCase();
+        processedOrders = processedOrders.filter(o => 
+          o.customer_name?.toLowerCase().includes(query) ||
+          String(o.number).toLowerCase().includes(query) ||
+          o.product_name?.toLowerCase().includes(query)
         );
       }
 

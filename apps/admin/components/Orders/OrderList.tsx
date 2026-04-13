@@ -15,7 +15,7 @@ interface Order {
   total: number
   status: string
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE'
-  sinal_valor: number
+  order_number?: number
   has_ai_suggestion?: boolean
 }
 
@@ -50,14 +50,14 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
         .select(`
           id,
           number,
+          order_number,
           customer_id,
           delivery_date,
           total,
           status,
           payment_status,
-          sinal_valor,
           customers:customer_id(id,name),
-          order_items(id,product_id,quantity),
+          order_items(id,product_id,quantity, products:product_id(name)),
           order_changes(id, status, is_ai_suggestion)
         `, { count: 'exact' })
         .neq('status', 'CANCELADO')
@@ -99,28 +99,38 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
       })
 
       // Processar dados e aplicar filtro de busca
-      let processedOrders: Order[] = (data || []).map((order: any) => ({
-        id: order.id,
-        number: order.order_number || order.number,
-        customer_id: order.customer_id,
-        customer_name: order.customers?.name || 'N/A',
-        product_name: order.order_items?.length > 0 ? `${order.order_items.length} item(s)` : 'N/A',
-        delivery_date: order.delivery_date,
-        total: order.total,
-        status: order.status,
-        payment_status: order.payment_status || 'SINAL_PENDENTE',
-        sinal_valor: order.sinal_valor || 0,
-        has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
-      }))
+      let processedOrders: Order[] = (data || []).map((order: any) => {
+        const itemNames = order.order_items?.map((i: any) => i.products?.name).filter(Boolean) || [];
+        const productName = itemNames.length === 1 
+          ? itemNames[0] 
+          : itemNames.length > 1 
+            ? `${itemNames.length} itens (${itemNames[0]}...)`
+            : 'N/A';
 
+        return {
+          id: order.id,
+          number: order.order_number || order.number,
+          customer_id: order.customer_id,
+          customer_name: order.customers?.name || 'N/A',
+          product_name: productName,
+          delivery_date: order.delivery_date,
+          total: order.total,
+          status: order.status,
+          payment_status: order.payment_status || 'SINAL_PENDENTE',
+          order_number: order.order_number,
+          has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
+        };
+      })
+
+      // Aplicar filtro de busca no lado do cliente (mais flexível para buscas em múltiplos campos)
       if (filters.search) {
-        const searchLower = filters.search.toLowerCase()
-        processedOrders = processedOrders.filter(
-          (order) =>
-            order.number.toLowerCase().includes(searchLower) ||
-            (order.customer_name && order.customer_name.toLowerCase().includes(searchLower)) ||
-            (order.product_name && order.product_name.toLowerCase().includes(searchLower))
-        )
+        const query = filters.search.toLowerCase();
+        processedOrders = processedOrders.filter(order => 
+          order.customer_name?.toLowerCase().includes(query) ||
+          String(order.number).toLowerCase().includes(query) ||
+          String(order.order_number || '').includes(query) ||
+          order.product_name?.toLowerCase().includes(query)
+        );
       }
 
       console.log('✅ Pedidos processados e prontos:', processedOrders.length)
@@ -212,7 +222,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
             >
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                 <div className="flex items-center gap-2">
-                  {order.number}
+                  #{order.order_number || String(order.number).slice(-4)}
                   {order.has_ai_suggestion && (
                     <span title="Sugestão da IA pendente"><Brain className="w-3.5 h-3.5 text-purple-500 animate-pulse" /></span>
                   )}
@@ -240,12 +250,14 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
               )}
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    order.status === 'ENTREGUE'
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                      : order.status === 'CONFIRMADO'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                  className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
+                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' : 
+                    order.status === 'CONFIRMADO' || order.status === 'ACEITO' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
+                    order.status === 'PREPARANDO' ? 'bg-purple-100 text-purple-800 border-purple-200' :
+                    order.status === 'PRONTO' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
+                    order.status === 'SAIU_ENTREGA' ? 'bg-amber-100 text-amber-800 border-amber-200' :
+                    order.status === 'CANCELADO' ? 'bg-red-100 text-red-800 border-red-200' :
+                    'bg-blue-100 text-blue-800 border-blue-200'
                   }`}
                 >
                   {order.status}

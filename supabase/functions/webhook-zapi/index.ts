@@ -52,13 +52,16 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
 
     console.log("✅ [webhook-zapi] Cliente identificado:", customer.id);
 
-    // 2. Save message to DB
+    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
+
+    // 2. Save message to DB with Idempotency (Upsert)
     const { data: messageRecord, error: messageError } = await supabase
       .from("messages")
-      .insert({
+      .upsert({
+        external_id: parsed.messageId,
         customer_id: customer.id,
         phone: parsed.phone,
-        direction: "INBOUND",
+        direction,
         type,
         content,
         media_url,
@@ -67,11 +70,12 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
           zapi_message_id: parsed.messageId,
           zapi_id: parsed.zaapId,
           sender_name: parsed.senderName,
+          fromMe: parsed.fromMe,
         },
         zapi_status: "DELIVERED",
-      })
+      }, { onConflict: "external_id" })
       .select()
-      .single();
+      .maybeSingle();
 
     if (messageError) {
       console.error("❌ [webhook-zapi] Erro ao inserir mensagem:", messageError);
@@ -81,7 +85,8 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     console.log("✅ [webhook-zapi] Mensagem salva:", messageRecord.id);
 
     // 3. Trigger AI processing for text messages only (passive mode)
-    if (type === "text") {
+    // ONLY for INBOUND messages (customer to shop)
+    if (type === "text" && direction === "INBOUND" && messageRecord) {
       console.log("🔄 [webhook-zapi] Disparando process-message...");
 
       // Fire-and-forget: don't await so webhook responds fast
@@ -106,9 +111,10 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         success: true,
-        message_id: messageRecord.id,
+        message_id: messageRecord?.id,
         customer_id: customer.id,
         type,
+        direction,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

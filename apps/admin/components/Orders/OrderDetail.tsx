@@ -10,6 +10,7 @@ import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
 import { ReferenceImages } from './ReferenceImages';
+import { ChangeHistory } from './ChangeHistory';
 import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText, Loader2 } from 'lucide-react';
 
 interface Order {
@@ -24,7 +25,6 @@ interface Order {
   updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
-  sinal_valor?: number;
   notes?: string;
   created_at: string | null;
 }
@@ -93,7 +93,6 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         updated_at: orderData.updated_at || new Date().toISOString(),
         payment_status: (orderData as any).payment_status || 'SINAL_PENDENTE',
         total: orderData.total,
-        sinal_valor: (orderData as any).sinal_valor || 0,
         notes: (orderData as any).notes || '',
         created_at: orderData.created_at
       };
@@ -229,23 +228,25 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
     <div className={isCompact ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-8"}>
       {/* Coluna Principal */}
       <div className={isCompact ? "w-full space-y-6" : "lg:col-span-8 space-y-6"}>
-        <AISuggestionPanel orderId={orderId} onSuggestionApplied={() => setRefreshKey(k => k + 1)} />
+        {!isCompact && (
+          <AISuggestionPanel orderId={orderId} onSuggestionApplied={() => setRefreshKey(k => k + 1)} />
+        )}
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+        <div className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 ${isCompact ? 'p-4' : 'p-6'}`}>
           <div className="flex items-start justify-between mb-6">
             <div>
               <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                  Pedido #{order.number}
+                <h1 className={`${isCompact ? 'text-xl' : 'text-3xl'} font-bold text-gray-900 dark:text-white`}>
+                  Pedido #{order.order_number || String(order.number).slice(-4)}
                 </h1>
                 <button 
                   onClick={() => setIsCatalogOpen(true)}
                   className="px-3 py-1 bg-blue-600/10 border border-blue-600/20 text-blue-600 rounded text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all flex items-center gap-2"
                 >
-                  <LayoutGrid className="w-3 h-3" /> Abrir Catálogo
+                  <LayoutGrid className="w-3 h-3" /> Catálogo
                 </button>
               </div>
-              {order.created_at && (
+              {!isCompact && order.created_at && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Criado em {new Date(order.created_at!).toLocaleDateString('pt-BR')}
                 </p>
@@ -262,13 +263,15 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                 📋 Informações do Pedido
               </h3>
               <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{order.customer_name}</p>
-                  {order.customer_phone && (
-                    <p className="text-xs text-gray-600 dark:text-gray-400">📞 {order.customer_phone}</p>
-                  )}
-                </div>
+                {!isCompact && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Cliente</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{order.customer_name}</p>
+                    {order.customer_phone && (
+                      <p className="text-xs text-gray-600 dark:text-gray-400">📞 {order.customer_phone}</p>
+                    )}
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Data de Entrega</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -330,6 +333,13 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         </div>
 
         <ReferenceImages orderId={orderId} customerId={order.customer_id} />
+
+        {/* Histórico de Alterações (Oculto no Modo Compacto) */}
+        {!isCompact && (
+          <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 rounded-3xl p-6">
+            <ChangeHistory orderId={orderId} refreshKey={refreshKey} />
+          </div>
+        )}
 
         {pendingPayments.length > 0 && canConfirmPayment && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
@@ -499,7 +509,9 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         <RegisterPaymentModal
           orderId={orderId}
           orderTotal={order.total}
-          sinalPago={order.sinal_valor || 0}
+          sinalPago={paymentEntries
+            .filter(p => p.status === 'CONFIRMADO')
+            .reduce((sum, p) => sum + Number(p.valor), 0)}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={() => {
             setShowPaymentModal(false);

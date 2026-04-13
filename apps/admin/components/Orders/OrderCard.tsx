@@ -46,7 +46,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban'
     >
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-sm font-bold text-gray-900 dark:text-white">#{order.number}</span>
+          <span className="text-sm font-bold text-gray-900 dark:text-white">
+            #{typeof order.number === 'number' ? order.number : (String(order.number).startsWith('PD-') || String(order.number).startsWith('MANUAL-') ? String(order.number).slice(-4) : order.number)}
+          </span>
           {order.has_ai_suggestion && (
             <span title="Sugestão da IA pendente">
               <Brain className="w-3.5 h-3.5 text-purple-500 animate-pulse" />

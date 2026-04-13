@@ -49,6 +49,9 @@ export default function NewOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
+  const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
+  const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
+  const [customerSearch, setCustomerSearch] = useState('');
 
   const [formData, setFormData] = useState<FormData>({
     customer_id: '',
@@ -115,6 +118,49 @@ export default function NewOrderPage() {
         customer_phone: customer.phone,
       }));
       setErrors((prev) => ({ ...prev, customer_id: '' }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        customer_id: '',
+        customer_name: '',
+        customer_phone: '',
+      }));
+    }
+  };
+
+  const handleCreateCustomer = async () => {
+    if (!newCustomer.name || !newCustomer.phone) {
+      alert("Preencha nome e telefone");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const { data, error } = await supabase
+        .from('customers')
+        .insert({
+          name: newCustomer.name,
+          phone: newCustomer.phone,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCustomers((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+      setFormData((prev) => ({
+        ...prev,
+        customer_id: data.id,
+        customer_name: data.name,
+        customer_phone: data.phone,
+      }));
+      setShowNewCustomerModal(false);
+      setNewCustomer({ name: '', phone: '' });
+    } catch (err) {
+      console.error("Erro ao criar cliente:", err);
+      alert("Erro ao criar cliente. Verifique se o telefone já existe.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -217,7 +263,8 @@ export default function NewOrderPage() {
       }
 
       // Generate order number
-      const orderNumber = `PD-${Date.now().toString().slice(-6)}`;
+      // Generate order number (Internal ID, the public one is order_number from sequence)
+      const orderNumber = `MANUAL-${Date.now().toString().slice(-6)}`;
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -326,33 +373,58 @@ export default function NewOrderPage() {
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Cliente */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                👤 Cliente
-              </h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Selecionar Cliente
-                </label>
-                <select
-                  value={formData.customer_id}
-                  onChange={handleCustomerChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.customer_id
-                      ? 'border-red-300'
-                      : 'border-gray-300'
-                  }`}
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  👤 Cliente
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowNewCustomerModal(true)}
+                  className="text-sm font-bold text-blue-600 hover:text-blue-700 underline"
                 >
-                  <option value="">Selecione um cliente</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.phone})
-                    </option>
-                  ))}
-                </select>
-                {errors.customer_id && (
-                  <p className="text-red-600 text-sm mt-1">{errors.customer_id}</p>
-                )}
+                  + Novo Cliente
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Filtrar clientes por nome ou telefone..."
+                    value={customerSearch}
+                    onChange={(e) => setCustomerSearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Selecionar Cliente
+                  </label>
+                  <select
+                    value={formData.customer_id}
+                    onChange={handleCustomerChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.customer_id
+                        ? 'border-red-300'
+                        : 'border-gray-300'
+                    }`}
+                  >
+                    <option value="">Selecione um cliente</option>
+                    {customers
+                      .filter(c => 
+                        c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+                        c.phone.includes(customerSearch)
+                      )
+                      .map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name} ({customer.phone})
+                        </option>
+                      ))}
+                  </select>
+                  {errors.customer_id && (
+                    <p className="text-red-600 text-sm mt-1">{errors.customer_id}</p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -580,6 +652,52 @@ export default function NewOrderPage() {
             </div>
           </form>
         </main>
+
+        {/* Modal Novo Cliente */}
+        {showNewCustomerModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+              <h3 className="text-xl font-bold text-gray-900 mb-4">Cadastrar Novo Cliente</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                  <input
+                    type="text"
+                    value={newCustomer.name}
+                    onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Ex: Maria Oliveira"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp / Telefone</label>
+                  <input
+                    type="text"
+                    value={newCustomer.phone}
+                    onChange={(e) => setNewCustomer(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Ex: 5511999999999"
+                  />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleCreateCustomer}
+                    disabled={submitting}
+                    className="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-lg shadow-blue-500/20"
+                  >
+                    Salvar Cliente
+                  </button>
+                  <button
+                    onClick={() => setShowNewCustomerModal(false)}
+                    className="flex-1 py-2 bg-gray-100 text-gray-600 rounded-lg font-bold hover:bg-gray-200"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
