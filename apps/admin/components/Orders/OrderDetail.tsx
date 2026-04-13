@@ -103,7 +103,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         .from('payment_entries')
         .select('*')
         .eq('order_id', orderId)
-        .order('created_at', { ascending: false });
+        .order('registered_at', { ascending: false });
 
       if (paymentsErr) {
         console.error('Erro ao buscar pagamentos:', paymentsErr);
