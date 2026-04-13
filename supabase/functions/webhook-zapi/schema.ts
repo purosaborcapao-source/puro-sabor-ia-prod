@@ -1,7 +1,7 @@
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // Z-API sends phone without '+' prefix — e.g. "5511999999999"
-const phoneSchema = z.string().min(10).max(20);
+const phoneSchema = z.string().min(10).max(100);
 
 // Text message payload
 const ZapiTextSchema = z.object({

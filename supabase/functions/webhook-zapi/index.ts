@@ -44,7 +44,8 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
 
     // ─── Camada 0: Filtragem de Grupos, Listas e Broadcasts ───────────────
     // Evita processar mensagens de grupos ou listas de transmissão que geram "leads fantasma"
-    if (parsed.phone.includes("@g.us") || parsed.phone.includes("@lid") || parsed.phone.includes("@broadcast")) {
+    // Mantemos @lid pois são identificadores de contatos legítimos no WhatsApp
+    if (parsed.phone.includes("@g.us") || parsed.phone.includes("@broadcast")) {
       console.log(`ℹ️ [webhook-zapi] Ignorando mensagem de grupo/lista: ${parsed.phone}`);
       return new Response(JSON.stringify({ success: true, ignored: true, reason: "group_or_list_ignored" }), {
         status: 200,
@@ -144,7 +145,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
         customer_id: customer.id,
         phone: parsed.phone.replace(/\D/g, ""),
         direction,
-        type,
+        type: type.toUpperCase() as any,
         content,
         media_url,
         sender_name: parsed.senderName || parsed.chatName,
