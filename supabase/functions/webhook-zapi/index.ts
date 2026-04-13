@@ -20,8 +20,9 @@ function buildFallbackExternalId(phone: string, content: string, momment?: numbe
   return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
 }
 
-// Normaliza telefone: remove tudo que não é dígito
+// Normaliza telefone se for um número puro; preserva IDs especiais (@lid, @g.us, etc)
 function normalizePhone(phone: string): string {
+  if (phone.includes("@")) return phone;
   return phone.replace(/\D/g, "");
 }
 
@@ -61,7 +62,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
-    const direction = parsed.fromMe ? "OUTGOING" : "INBOUND";
+    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
     // ─── Camada 1: Construir external_id robusto ───────────────────────────
     // Usa messageId real da Z-API quando disponível; caso contrário, gera fallback
@@ -145,18 +146,20 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
 
     // 2. Inserir mensagem simples (sem upsert para evitar erros de schema)
     const insertData = {
+      external_id: externalId,
       customer_id: customer.id,
       phone: normalizedPhone,
       direction,
       type: messageType,
       content,
+      media_url,
       payload: {
         raw_text: content,
-        external_id: externalId,
         zapi_message_id: parsed.messageId,
         sender_name: parsed.senderName,
         fromMe: parsed.fromMe,
       },
+      zapi_status: "DELIVERED" as const,
     };
     
     console.log("💾 [webhook-zapi] Inserindo:", JSON.stringify(insertData).slice(0, 200));
