@@ -374,7 +374,6 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                   </div>
                   <ConfirmPaymentButton
                     paymentEntryId={payment.id}
-                    orderId={orderId}
                     paymentType={payment.payment_type}
                     paymentAmount={payment.amount}
                     onSuccess={() => setRefreshKey(k => k + 1)}

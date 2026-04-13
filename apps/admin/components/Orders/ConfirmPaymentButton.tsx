@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext'
 
 interface ConfirmPaymentButtonProps {
   paymentEntryId: string
-  orderId: string
   paymentType: 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO'
   paymentAmount: number
   onSuccess?: () => void
@@ -13,7 +12,6 @@ interface ConfirmPaymentButtonProps {
 
 export function ConfirmPaymentButton({
   paymentEntryId,
-  orderId,
   paymentType,
   paymentAmount,
   onSuccess,
