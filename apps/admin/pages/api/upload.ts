@@ -20,7 +20,7 @@ export const config = {
 };
 
 export default async function handler(
-  req: NextApiRequest,
+  req: NextApiRequest & { formData: () => Promise<FormData> },
   res: NextApiResponse<ApiResponse>
 ) {
   if (req.method !== "POST") {
@@ -28,7 +28,7 @@ export default async function handler(
   }
 
   try {
-    const formData = await req.formData();
+    const formData = await (req as any).formData();
     const file = formData.get("file") as File | null;
 
     if (!file) {
