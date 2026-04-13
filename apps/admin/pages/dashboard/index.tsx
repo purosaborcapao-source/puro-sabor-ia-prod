@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
 import { PendenciasList, usePendencias, Pendencia } from '@/components/Dashboard/PendenciasList'
 import { DayMetrics } from '@/components/Dashboard/DayMetrics'
-import { SchedulingWidget } from '@/components/Dashboard/SchedulingWidget'
+import { RecentMessages } from '@/components/Dashboard/RecentMessages'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 
@@ -179,11 +179,11 @@ export default function DashboardPage() {
             </div>
 
             <div className="lg:col-span-5 space-y-4">
-              <h2 className="text-xs font-black tracking-widest uppercase text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-4 bg-gray-500"></span> CALENDÁRIO OPERACIONAL
+              <h2 className="text-xs font-black tracking-widest uppercase text-emerald-600 dark:text-emerald-500 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-4 bg-emerald-500"></span> MENSAGENS RECENTES
               </h2>
-              <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 shadow-sm p-4">
-                <SchedulingWidget />
+              <div className="bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 shadow-sm">
+                <RecentMessages />
               </div>
             </div>
           </div>
