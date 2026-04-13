@@ -42,7 +42,18 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       });
     }
 
+    // ─── Camada 0: Filtragem de Grupos, Listas e Broadcasts ───────────────
+    // Evita processar mensagens de grupos ou listas de transmissão que geram "leads fantasma"
+    if (parsed.phone.includes("@g.us") || parsed.phone.includes("@lid") || parsed.phone.includes("@broadcast")) {
+      console.log(`ℹ️ [webhook-zapi] Ignorando mensagem de grupo/lista: ${parsed.phone}`);
+      return new Response(JSON.stringify({ success: true, ignored: true, reason: "group_or_list_ignored" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const { content, type, media_url } = extractMessageContent(parsed);
+    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
     // ─── Camada 1: Construir external_id robusto ───────────────────────────
     // Usa messageId real da Z-API quando disponível; caso contrário, gera fallback
@@ -109,16 +120,21 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     });
 
     // 1. Find or create customer
-    const customer = await findOrCreateCustomer(supabase, parsed.phone, parsed.senderName || parsed.chatName);
+    // Se for OUTBOUND (aparelho), não criamos novo customer/lead. Apenas vinculamos se já existir.
+    const customer = await findOrCreateCustomer(
+      supabase, 
+      parsed.phone, 
+      parsed.senderName || parsed.chatName,
+      direction === "OUTBOUND" // allowSearchOnly
+    );
 
     if (!customer) {
+      console.log(`ℹ️ [webhook-zapi] Customer não encontrado para mensagem OUTBOUND: ${parsed.phone}. Ignorando.`);
       return new Response(
-        JSON.stringify({ error: "Failed to create customer" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, ignored: true, reason: "outbound_customer_not_found" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
       );
     }
-
-    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
     // 2. Salvar mensagem com external_id garantido + content_hash no payload
     const { data: messageRecord, error: messageError } = await supabase
@@ -214,7 +230,8 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
 async function findOrCreateCustomer(
   supabase: ReturnType<typeof createClient>,
   phone: string,
-  displayName?: string
+  displayName?: string,
+  allowSearchOnly = false
 ): Promise<{ id: string; name: string } | null> {
   const normalizedPhone = phone.replace(/\D/g, "");
 
@@ -227,6 +244,8 @@ async function findOrCreateCustomer(
   if (!searchError && existing) return existing;
 
   if (searchError?.code === "PGRST116") {
+    if (allowSearchOnly) return null;
+
     const name = displayName || `Cliente ${normalizedPhone.slice(-4)}`;
     const { data: newCustomer, error: createError } = await supabase
       .from("customers")
