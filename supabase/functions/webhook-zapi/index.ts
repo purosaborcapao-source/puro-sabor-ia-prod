@@ -90,15 +90,13 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     // para exatamente o mesmo conteúdo (ex: falha e reenvio automático).
     const contentHash = simpleHash(`${parsed.phone}:${content}:${type}`);
     const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
-    const normalizedPhone = parsed.phone.replace(/\D/g, "");
-    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
     const { data: contentDuplicate } = await supabase
       .from("messages")
       .select("id")
-      .eq("phone", normalizedPhone)
+      .eq("phone", parsed.phone)
       .eq("direction", direction)
-      .eq("type", type)
+      .eq("type", type.toUpperCase())
       .eq("content", content)
       .gte("created_at", thirtySecondsAgo)
       .limit(1)
@@ -143,7 +141,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       .upsert({
         external_id: externalId,
         customer_id: customer.id,
-        phone: parsed.phone.replace(/\D/g, ""),
+        phone: parsed.phone,
         direction,
         type: type.toUpperCase() as any,
         content,
@@ -234,12 +232,10 @@ async function findOrCreateCustomer(
   displayName?: string,
   allowSearchOnly = false
 ): Promise<{ id: string; name: string } | null> {
-  const normalizedPhone = phone.replace(/\D/g, "");
-
   const { data: existing, error: searchError } = await supabase
     .from("customers")
     .select("id, name")
-    .eq("phone", normalizedPhone)
+    .eq("phone", phone)
     .single();
 
   if (!searchError && existing) return existing;
@@ -247,20 +243,19 @@ async function findOrCreateCustomer(
   if (searchError?.code === "PGRST116") {
     if (allowSearchOnly) return null;
 
-    const name = displayName || `Cliente ${normalizedPhone.slice(-4)}`;
+    const name = displayName || `Cliente ${phone.slice(-4)}`;
     const { data: newCustomer, error: createError } = await supabase
       .from("customers")
-      .insert({ phone: normalizedPhone, name })
+      .insert({ phone: phone, name })
       .select("id, name")
       .single();
 
     if (createError) {
-      // Race condition: outro request criou o customer simultaneamente
       if (createError.code === "23505") {
         const { data: raceWinner } = await supabase
           .from("customers")
           .select("id, name")
-          .eq("phone", normalizedPhone)
+          .eq("phone", phone)
           .single();
         return raceWinner;
       }
