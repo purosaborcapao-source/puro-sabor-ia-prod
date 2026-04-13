@@ -51,7 +51,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
           .limit(1000),
         supabase
           .from("conversations")
-          .select("customer_id, status, last_inbound_at")
+          .select("customer_id, status, last_inbound_at, is_blocked")
       ]);
 
       if (messagesRes.error) throw messagesRes.error;
@@ -69,8 +69,12 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
       validMessages?.forEach((msg: any) => {
         const customerId = msg.customer_id;
+        const conv = convMap.get(customerId);
+        
+        // Pula se estiver congelada
+        if (conv?.is_blocked) return;
+
         if (!chatMap.has(customerId)) {
-          const conv = convMap.get(customerId);
           
           chatMap.set(customerId, {
             customer_id: customerId,

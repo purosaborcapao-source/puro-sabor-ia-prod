@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { MessageReplyForm } from "./MessageReplyForm";
 import { MessageBubble } from "./MessageBubble";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Ban, ShoppingCart } from "lucide-react";
+import { useRouter } from "next/router";
 import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
 import { SLATimer } from "./SLATimer";
 
@@ -28,7 +29,9 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [error, setError] = useState<string | null>(null);
   const [convStatus, setConvStatus] = useState<ConversationStatus | null>(null);
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   // Scroll para o final quando novas mensagens chegam
   const scrollToBottom = () => {
@@ -91,13 +94,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar status da conversa
       const { data: convData } = await supabase
         .from("conversations")
-        .select("status, last_inbound_at")
+        .select("status, last_inbound_at, is_blocked")
         .eq("customer_id", customerId)
         .single();
         
       if (convData) {
         setConvStatus(convData.status as ConversationStatus);
         setLastInboundAt(convData.last_inbound_at);
+        setIsBlocked(convData.is_blocked || false);
         
         // Auto-atribuir para Em Atendimento se for Nova
         if (convData.status === "NEW") {
@@ -241,6 +245,39 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           {lastInboundAt && convStatus && (
             <SLATimer status={convStatus} lastInboundAt={lastInboundAt} />
           )}
+          {isBlocked && (
+            <span className="px-2 py-1 bg-red-100 text-red-700 text-xs rounded-full font-semibold border border-red-200">
+              CONGELADA
+            </span>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={async () => {
+              const novo = !isBlocked;
+              await supabase.from("conversations").update({ is_blocked: novo }).eq("customer_id", customerId);
+              setIsBlocked(novo);
+            }}
+            title={isBlocked ? "Descongelar" : "Congelar conversa"}
+            className={`p-2 rounded-lg transition border ${
+              isBlocked 
+                ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" 
+                : "bg-white text-gray-400 border-gray-200 hover:text-red-500 hover:bg-gray-50"
+            }`}
+          >
+            <Ban className="w-4 h-4" />
+          </button>
+          
+          <button
+            onClick={() => {
+              router.push(`/dashboard/orders/new?customer_id=${customerId}&name=${encodeURIComponent(customerName)}&phone=${customerPhone || ''}`);
+            }}
+            className="flex items-center gap-2 px-3 py-2 bg-[var(--primary-paprica)] hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            <span className="hidden sm:inline">Criar Pedido</span>
+          </button>
         </div>
       </div>
 

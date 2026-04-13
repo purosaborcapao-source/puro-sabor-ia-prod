@@ -151,7 +151,7 @@ export const ConversationKanban: React.FC = () => {
           .limit(1000),
         supabase
           .from("conversations")
-          .select("customer_id, status, last_inbound_at"),
+          .select("customer_id, status, last_inbound_at, is_blocked"),
         supabase
           .from("orders")
           .select("customer_id, total, id, payment_status")
@@ -182,8 +182,12 @@ export const ConversationKanban: React.FC = () => {
 
       validMessages.forEach((msg: any) => {
         const cid = msg.customer_id;
+        const conv = convMap.get(cid);
+        
+        // Pula conversas bloqueadas
+        if (conv?.is_blocked) return;
+
         if (!chatMap.has(cid)) {
-          const conv = convMap.get(cid);
           const pending = pendingPaymentMap.get(cid);
           chatMap.set(cid, {
             customer_id: cid,
