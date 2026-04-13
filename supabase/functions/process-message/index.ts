@@ -356,21 +356,29 @@ async function createDraftOrder(
     console.log(`✅ Rascunho de pedido criado: ${order.number}`);
 
     // 2. Criar os order_items se viermos com IDs e calcular Total
+    console.log("📦 Itens recebidos:", JSON.stringify(extractedData?.items));
+    
     if (extractedData?.items && Array.isArray(extractedData.items)) {
       const orderItems = [];
+      console.log(`🔍 Processando ${extractedData.items.length} itens`);
+      
       for (const item of extractedData.items) {
+         console.log("📦 Item:", JSON.stringify(item));
+         
          if (item.product_id) {
            orderItems.push({
              order_id: order.id,
              product_id: item.product_id,
-             quantity: item.quantity,
-             unit_price: item.price,
+             quantity: item.quantity || 1,
+             unit_price: item.price || 0,
              customizations: { notes: item.observation }
            });
          } else {
-             console.warn(`⚠️ Produto não encontrado no DB para a linha: ${item.observation}`);
+             console.warn(`⚠️ produto_id não encontrado no item: ${JSON.stringify(item)}`);
          }
       }
+      console.log("📦 orderItems a inserir:", JSON.stringify(orderItems));
+      
       if (orderItems.length > 0) {
         const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
         if (itemsError) {
