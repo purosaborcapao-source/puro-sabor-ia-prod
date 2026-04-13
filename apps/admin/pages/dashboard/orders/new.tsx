@@ -83,18 +83,25 @@ export default function NewOrderPage() {
           .select('id, name, phone')
           .order('name');
 
-        if (customersError) throw customersError;
-        setCustomers(customersData || []);
+        if (customersError) {
+          console.error('Erro carregando customers:', customersError);
+        } else {
+          setCustomers(customersData || []);
+        }
 
-        // Load active products
+        // Load all products (remove is_active filter temporarily)
         const { data: productsData, error: productsError } = await supabase
           .from('products')
           .select('id, name, price, category')
-          .eq('is_active', true)
           .order('name');
 
-        if (productsError) throw productsError;
-        setProducts(productsData || []);
+        console.log('📦 Products loaded:', productsData?.length, productsError);
+
+        if (productsError) {
+          console.error('Erro carregando produtos:', productsError);
+        } else {
+          setProducts(productsData || []);
+        }
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
         setErrors({ load: 'Erro ao carregar dados' });
