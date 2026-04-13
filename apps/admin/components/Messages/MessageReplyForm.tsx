@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Image, FileText, Mic, X } from "lucide-react";
 import { TemplateBar } from "./TemplateBar";
+import { supabase } from "@atendimento-ia/supabase";
 
 interface Attachment {
   file: File;
@@ -71,20 +72,27 @@ export const MessageReplyForm: React.FC<MessageReplyFormProps> = ({ onSend }) =>
   };
 
   const uploadFile = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
+    const ext = file.name ? file.name.split('.').pop() || "" : "";
+    const nameWithoutSpacing = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : "audio_capture.webm";
+    const fileName = `${Date.now()}-${nameWithoutSpacing}`;
+    const bucketPath = `uploads/${fileName}`;
 
-    const res = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
+    const { error: uploadError } = await supabase.storage
+      .from("media")
+      .upload(bucketPath, file, {
+        cacheControl: "public, max-age=31536000",
+        upsert: false,
+      });
 
-    const data = await res.json();
-    if (!data.success) {
-      throw new Error(data.error || "Erro ao fazer upload");
+    if (uploadError) {
+      throw new Error(uploadError.message || "Erro ao fazer upload");
     }
 
-    return data.url;
+    const { data: urlData } = supabase.storage
+      .from("media")
+      .getPublicUrl(bucketPath);
+
+    return urlData.publicUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

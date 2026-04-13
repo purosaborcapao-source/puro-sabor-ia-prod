@@ -117,6 +117,7 @@ export default async function handler(
         media_url: imageUrl || audioUrl || documentUrl || null,
         payload: { zapi_message_id: zapiData.messageId },
         zapi_status: "SENT",
+        external_id: zapiData.messageId ? `zapi:${zapiData.messageId}` : null,
       });
 
       if (insertErr) {

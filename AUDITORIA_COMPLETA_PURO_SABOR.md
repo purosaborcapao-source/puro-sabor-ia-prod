@@ -267,13 +267,15 @@ WHERE payment_status != 'SINAL_PENDENTE'
 
 ---
 
-### 1.16 ✅ Deduplicação de mensagens WhatsApp — 4 camadas de proteção
+### 1.16 ✅ Deduplicação de mensagens WhatsApp + vinculação correta de mensagens OUTBOUND
 
-**Problema:** Mensagens enviadas pelo próprio aparelho (Z-API `fromMe: true`) e retries internos da Z-API estavam gerando duplicatas no banco. A causa raiz: `messageId` é opcional no schema — quando `null`, o `external_id` também ficava `null`, e o índice único parcial (`WHERE external_id IS NOT NULL`) deixava múltiplos `null` passarem.
+**Problema duplo:**
+1. Duplicatas: Mensagens enviadas pelo aparelho (Z-API `fromMe: true`) estavam gerando duplicatas. Causa raiz: `messageId` opcional; quando `null`, `external_id` também ficava `null`; índice único parcial deixava múltiplos `null` passarem.
+2. Vinculação incorreta: Mensagens OUTBOUND (@lid) estavam sendo vinculadas ao chat ID (`175389318094925@lid`) em vez do customer real (`555183401715`). Motivo: a Z-API envia `phone = @lid` (ID interno do chat) para mensagens saintes, não o número do cliente.
 
 **Arquivo alterado:** `supabase/functions/webhook-zapi/index.ts`
 
-**Solução — 4 camadas implementadas:**
+**Solução — 4 camadas + correção de vinculação:**
 
 **Camada 1 — `external_id` nunca nulo:**
 ```typescript
@@ -319,16 +321,42 @@ if (contentDuplicate) return duplicate_content_response;
 // o banco garante que apenas uma será inserida.
 ```
 
-**Também corrigido:** Race condition em `findOrCreateCustomer` — quando dois requests simultâneos tentam criar o mesmo customer, o segundo agora captura o erro `23505` (unique violation) e busca o registro criado pelo primeiro, em vez de retornar `null`.
+**Correção de vinculação — normalizePhone rejeita @lid orphans:**
+```typescript
+// ANTES: preservava IDs de chat @lid inteiros como phone
+// DEPOIS: extrai apenas dígitos; rejeita se < 10 dígitos
 
-**Deploy:** Versão 4 da Edge Function `webhook-zapi` implantada com sucesso.
+function normalizePhone(phone: string): string {
+  const clean = phone.split("@")[0];  // "175389318094925@lid" → "175389318094925"
+  const digits = clean.replace(/\D/g, "");  // extrai só números
+  if (!digits || digits.length < 10) return "";  // rejeita IDs sem número
+  return digits;
+}
+
+// Mensagens OUTBOUND @lid agora são ignoradas antes de processamento:
+if (direction === "OUTBOUND" && parsed.phone.includes("@lid")) {
+  if (!parsed.chatName || parsed.chatName.includes("Puro Sabor")) {
+    // Ignorar chat de saída com nome genérico ou da bakery
+    return { success: true, ignored: true, reason: "outbound_lid_orphan" };
+  }
+}
+```
+
+**Impacto:**
+- Mensagens OUTBOUND (@lid) sem vinculação clara agora são ignoradas, em vez de criarem customers orphans
+- Mensagens INBOUND continuam funcionando normalmente, vinculadas ao customer correto
+- Duplicatas são bloqueadas em 4 camadas independentes
+
+**Também corrigido:** Race condition em `findOrCreateCustomer` — quando dois requests simultâneos tentam criar o mesmo customer, o segundo captura erro `23505` e busca o registro criado pelo primeiro.
+
+**Deploy:** Versão 18 da Edge Function `webhook-zapi` implantada com sucesso.
 
 **Índice no banco confirmado:**
 ```sql
 CREATE UNIQUE INDEX idx_messages_external_id
 ON public.messages USING btree (external_id)
 WHERE (external_id IS NOT NULL);
--- Com external_id sempre preenchido, cobre 100% das mensagens.
+-- Com external_id sempre preenchido, cobre 100% das mensagens legítimas.
 ```
 
 ---

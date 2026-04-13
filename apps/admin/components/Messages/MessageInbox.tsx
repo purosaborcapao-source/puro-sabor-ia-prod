@@ -3,7 +3,8 @@ import { supabase } from "@atendimento-ia/supabase";
 import { MessageThread } from "./MessageThread";
 import { MessageListItem } from "./MessageListItem";
 import { OrderContextPanel } from "./OrderContextPanel";
-import { AlertCircle, MessageSquare, RefreshCw, Search } from "lucide-react";
+import { ConversationKanban } from "./ConversationKanban";
+import { AlertCircle, MessageSquare, RefreshCw, Search, LayoutList, Kanban } from "lucide-react";
 
 interface MessageChat {
   customer_id: string;
@@ -25,6 +26,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [filter, setFilter] = useState<"ALL" | "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED">("NEW");
 
   // Carregar lista de chats
@@ -45,7 +47,8 @@ export const MessageInbox = React.memo(function MessageInbox() {
           .select(
             "customer_id, phone, direction, content, created_at, is_read, customers:customer_id(name)"
           )
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false })
+          .limit(1000),
         supabase
           .from("conversations")
           .select("customer_id, status, last_inbound_at")
@@ -196,6 +199,33 @@ export const MessageInbox = React.memo(function MessageInbox() {
     );
   }
 
+  // ── Visão Kanban ──────────────────────────────────────────────────────────
+  if (viewMode === "kanban") {
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
+        {/* Sidebar mínima no Kanban: ícones de toggle */}
+        <div className="w-14 shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col items-center pt-4 gap-3">
+          <button
+            onClick={() => setViewMode("list")}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Voltar para Lista"
+          >
+            <LayoutList className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </button>
+          <button
+            onClick={loadChats}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Atualizar"
+          >
+            <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+          </button>
+        </div>
+        <ConversationKanban />
+      </div>
+    );
+  }
+
+  // ── Visão Lista (padrão) ───────────────────────────────────────────────────
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar com lista de chats */}
@@ -207,13 +237,27 @@ export const MessageInbox = React.memo(function MessageInbox() {
               <MessageSquare className="w-5 h-5" />
               Mensagens
             </h2>
-            <button
-              onClick={loadChats}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              title="Atualizar"
-            >
-              <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Toggle: Lista / Kanban */}
+              <button
+                onClick={() => setViewMode(viewMode === "list" ? "kanban" : "list")}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title={viewMode === "list" ? "Alternar para Kanban" : "Alternar para Lista"}
+              >
+                {viewMode === "list" ? (
+                  <Kanban className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                ) : (
+                  <LayoutList className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                )}
+              </button>
+              <button
+                onClick={loadChats}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                title="Atualizar"
+              >
+                <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
           </div>
 
           {/* Busca por Nome */}
@@ -291,10 +335,11 @@ export const MessageInbox = React.memo(function MessageInbox() {
         )}
       </div>
 
-      {/* NOVO: Painel de Contexto do Pedido (Lado Direito) */}
+      {/* Painel de Contexto do Pedido (Lado Direito) */}
       <div className="w-96 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hidden lg:block">
         <OrderContextPanel customerId={selectedCustomerId || ""} />
       </div>
+    </div>
     </div>
   );
 });
