@@ -16,6 +16,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   const [orders, setOrders] = useState<any[]>([]);
   
   // Notas e Contexto
+  const [customerName, setCustomerName] = useState<string>("");
   const [customerNotes, setCustomerNotes] = useState<string>("");
   const [customerPhone, setCustomerPhone] = useState<string>("");
   const [customerSince, setCustomerSince] = useState<string>("");
@@ -61,11 +62,12 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
       // Buscar clientes e notas
       const { data: customerData } = await supabase
         .from("customers")
-        .select("notes, phone, created_at")
+        .select("name, notes, phone, created_at")
         .eq("id", customerId)
         .single();
         
       if (customerData) {
+        setCustomerName(customerData.name || "");
         setCustomerNotes(customerData.notes || "Sem instruções gerais do cliente.");
         setCustomerPhone(customerData.phone);
         setCustomerSince(customerData.created_at ? new Date(customerData.created_at).toLocaleDateString("pt-BR", { month: 'short', year: 'numeric' }) : 'N/A');
@@ -168,9 +170,8 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                 <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-gray-500 mb-4">Nenhum pedido ativo para este cliente.</p>
                 <Link 
-                  href={`/dashboard/orders/new?customer=${customerId}`}
+                  href={`/dashboard/orders/new?customer_id=${customerId}&name=${encodeURIComponent(customerName)}&phone=${encodeURIComponent(customerPhone)}`}
                   className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                  target="_blank"
                 >
                   <Plus className="w-5 h-5" />
                   Criar Pedido Agora

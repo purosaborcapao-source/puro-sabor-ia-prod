@@ -11,7 +11,14 @@ import { OrderItemList } from './OrderItemList';
 import { ProductCatalogDrawer } from './ProductCatalogDrawer';
 import { ReferenceImages } from './ReferenceImages';
 import { ChangeHistory } from './ChangeHistory';
-import { AlertCircle, MessageCircle, LayoutGrid, Share2, FileText, Loader2 } from 'lucide-react';
+import { generatePixPayload, getPixQrCodeUrl } from '../../utils/pix';
+import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode } from 'lucide-react';
+
+interface OrderItem {
+  quantity: number;
+  unit_price: number;
+  product?: { name: string };
+}
 
 interface Order {
   id: string;
@@ -22,6 +29,7 @@ interface Order {
   delivery_date: string;
   delivery_type: string;
   status: string;
+  items?: OrderItem[];
   updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
@@ -72,7 +80,12 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         .from('orders')
         .select(`
           *,
-          customers:customer_id(name, phone)
+          customers:customer_id(name, phone),
+          order_items (
+            quantity,
+            unit_price,
+            products(name)
+          )
         `)
         .eq('id', orderId)
         .single();
@@ -94,7 +107,12 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         payment_status: (orderData as any).payment_status || 'SINAL_PENDENTE',
         total: orderData.total,
         notes: (orderData as any).notes || '',
-        created_at: orderData.created_at
+        created_at: orderData.created_at,
+        items: (orderData as any).order_items?.map((item: any) => ({
+           quantity: item.quantity,
+           unit_price: item.unit_price,
+           product: item.products
+        })) || []
       };
 
       setOrder(processedOrder);
@@ -157,16 +175,49 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
     }
   };
 
-  const handleSendSummaryToWhatsApp = async () => {
+  const handleSendSummaryToWhatsApp = async (sugestedDownPayment: number, silentConfirmation: boolean = false) => {
     if (!order || !order.customer_phone) return;
     
     try {
       setSendingWhatsApp(true);
-      const customerUrl = 'https://puro-sabor-catalogo.vercel.app';
-      const url = `${customerUrl}/pedido/confirmacao/${order.id}`;
-      const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
       
-      const res = await fetch('/api/whatsapp/send', {
+      // Montagem do Payload PIX
+      // CNPJ, Nome, Capão da Canoa
+      // Passamos amount como undefinied para deixar o valor em aberto, conforme solictado ("valor sugestivo, nao fechado")
+      const pixPayloadStr = generatePixPayload(
+        '42380994000169',
+        'Puro Sabor Confeitaria LTDA',
+        'Capao da Canoa',
+        order.number.slice(-6)
+      );
+      
+      const qrCodeUrl = getPixQrCodeUrl(pixPayloadStr);
+
+      // Montagem da lista de produtos
+      const itemsList = order.items?.map(item => 
+        `• ${item.quantity}x ${item.product?.name} (R$ ${(item.quantity * item.unit_price).toFixed(2)})`
+      ).join('\n') || '';
+
+      const text = `🎉 *Pedido #${order.number.slice(-4)} Confirmado!*
+Olá ${order.customer_name}! Seu pedido foi recebido e está confirmado para produção com muito carinho.
+
+*📄 Resumo dos Itens:*
+${itemsList}
+
+💰 *Valor Total do Pedido:* R$ ${order.total.toFixed(2)}
+🔸 *Sinal Sugerido:* R$ ${sugestedDownPayment.toFixed(2)} (para confirmar a data/produção)
+📍 *Tipo de Cesta:* ${order.delivery_type === 'ENTREGA' ? 'Entrega' : 'Retirada'}
+${order.delivery_date ? `📅 *Data:* ${new Date(order.delivery_date).toLocaleDateString('pt-BR')}` : ''}
+
+⬇️ *PAGAMENTO DO SINAL* ⬇️
+Você pode usar a aba "PIX Copia e Cola" no seu banco usando o código longo abaixo, ou escanear a imagem do QR Code que estou te enviando! O valor fica sugerido, mas como combinamos, não é travado. 😉
+
+${pixPayloadStr}
+
+Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
+
+      // 1. Enviar primeiro o texto (que inclui o copia e cola do Pix)
+      const resText = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -177,13 +228,31 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         }),
       });
       
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error);
-      
-      alert('Resumo enviado com sucesso via WhatsApp!');
+      const dataText = await resText.json();
+      if (!dataText.success) throw new Error(dataText.error);
+
+      // 2. Enviar Imagem do QR Code
+      const resImage = await fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          type: 'image', 
+          phone: order.customer_phone, 
+          imageUrl: qrCodeUrl,
+          caption: "Seu QR Code PIX ☝️", 
+          customerId: order.customer_id 
+        }),
+      });
+
+      const dataImage = await resImage.json();
+      if (!dataImage.success) console.warn("Erro ao enviar imagem do QRCode", dataImage.error); // Continua mesmo se falhar a imagem
+
+      if (!silentConfirmation) {
+        alert('Resumo completo com PIX Copia e Cola enviado com sucesso via WhatsApp!');
+      }
     } catch (err) {
       console.error('Erro ao enviar WhatsApp:', err);
-      alert('Falha ao enviar mensagem. Verifique se o WhatsApp está conectado.');
+      if (!silentConfirmation) alert('Falha ao enviar mensagem. Verifique se o WhatsApp está conectado.');
     } finally {
       setSendingWhatsApp(false);
     }
@@ -290,21 +359,27 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                   {order.status === 'PENDENTE' && (
                     <button
                       onClick={async () => {
-                        if (!confirm('Confirmar pedido para produção? O sinal pode ser recebido depois.')) return;
+                        const sugValue = (order.total * 0.3).toFixed(2);
+                        const userValue = prompt(`Confirma a produção do pedido?\n\nQual é o valor sugerido do sinal? (Será enviado ao cliente com uma chave PIX "em aberto")`, sugValue);
+                        if (userValue === null) return;
+                        
                         try {
                           const { error } = await supabase
                             .from('orders')
                             .update({ status: 'CONFIRMADO' })
                             .eq('id', orderId);
                           if (error) throw error;
+
+                          // Auto-envia após a confirmação
+                          await handleSendSummaryToWhatsApp(parseFloat(userValue), true);
                           setRefreshKey(k => k + 1);
                         } catch (err: any) {
                           alert('Erro: ' + err.message);
                         }
                       }}
-                      className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-[10px] font-bold uppercase hover:bg-blue-700"
+                      className="ml-2 px-3 py-1.5 bg-blue-600 shadow-sm text-white rounded text-xs font-bold hover:bg-blue-700 transition"
                     >
-                      Confirmar
+                      Confirmar Pedido (Z-API)
                     </button>
                   )}
                 </div>
@@ -488,38 +563,19 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
             
             <button
               onClick={() => {
-                const customerUrl = 'https://puro-sabor-catalogo.vercel.app';
-                const url = `${customerUrl}/pedido/confirmacao/${order.id}`;
-                const text = `Olá ${order.customer_name}! Segue o link com o resumo do seu pedido #${order.number} e os dados para pagamento do sinal: ${url}`;
-                navigator.clipboard.writeText(text);
-                alert('Link e resumo copiados para a área de transferência!');
+                const sugg = prompt('Qual valor sugerido para o sinal?', (order.total * 0.3).toFixed(2));
+                if (sugg) handleSendSummaryToWhatsApp(parseFloat(sugg));
               }}
-              className="w-full py-2 bg-emerald-600/10 border border-emerald-600/20 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-600/20 transition-all"
-            >
-              <Share2 className="w-3 h-3" /> Copiar Link Resumo
-            </button>
-
-            <button
-              onClick={handleSendSummaryToWhatsApp}
               disabled={sendingWhatsApp || !order.customer_phone}
               className="w-full py-2 bg-emerald-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/10 disabled:opacity-50"
             >
               {sendingWhatsApp ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                <MessageCircle className="w-3 h-3" />
+                <QrCode className="w-3 h-3" />
               )}
-              Enviar via WhatsApp
+              Re-enviar Resumo + PIX
             </button>
-            
-            <a
-              href={`https://puro-sabor-catalogo.vercel.app/pedido/confirmacao/${order.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-2 bg-white dark:bg-gray-800 border border-emerald-200 text-emerald-700 dark:text-emerald-400 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-all"
-            >
-              <FileText className="w-3 h-3" /> Ver como Cliente
-            </a>
           </div>
         </div>
       </div>

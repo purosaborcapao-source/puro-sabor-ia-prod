@@ -52,6 +52,9 @@ export default function NewOrderPage() {
   const [showNewCustomerModal, setShowNewCustomerModal] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '' });
   const [customerSearch, setCustomerSearch] = useState('');
+  const [productSearch, setProductSearch] = useState('');
+  // true quando o pedido foi iniciado a partir um lead/cliente específico
+  const [isLinkedToLead, setIsLinkedToLead] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     customer_id: '',
@@ -113,30 +116,36 @@ export default function NewOrderPage() {
     loadData();
   }, [authLoading, profile, router.isReady]); // router is tracked to catch query
 
-  // Se vier customer_id pela URL, inicializamos a busca
+  // Se vier customer_id pela URL, vincula automaticamente ao lead
   useEffect(() => {
-    if (router.isReady && router.query.customer_id && customers.length > 0) {
-      const cid = router.query.customer_id as string;
-      const cname = router.query.name as string || '';
-      const cphone = router.query.phone as string || '';
-      
-      const found = customers.find(c => c.id === cid);
-      if (found) {
-        setFormData(prev => ({
-          ...prev,
-          customer_id: found.id,
-          customer_name: found.name,
-          customer_phone: found.phone
-        }));
-      } else if (cid && cname) {
-        // Fallback: mesmo sem carregar a lista (ex: cliente recem criado e não refletiu)
-        setFormData(prev => ({
-          ...prev,
-          customer_id: cid,
-          customer_name: cname,
-          customer_phone: cphone
-        }));
-      }
+    if (!router.isReady) return;
+
+    const cid = router.query.customer_id as string;
+    const cname = router.query.name as string || '';
+    const cphone = router.query.phone as string || '';
+
+    if (!cid) return;
+
+    // Marca que este pedido está vinculado a um lead específico
+    setIsLinkedToLead(true);
+
+    // Tenta encontrar na lista já carregada (customer pode ainda não ter carregado)
+    const found = customers.find(c => c.id === cid);
+    if (found) {
+      setFormData(prev => ({
+        ...prev,
+        customer_id: found.id,
+        customer_name: found.name,
+        customer_phone: found.phone
+      }));
+    } else if (cname) {
+      // Fallback imediato com os dados da query string
+      setFormData(prev => ({
+        ...prev,
+        customer_id: cid,
+        customer_name: cname,
+        customer_phone: cphone
+      }));
     }
   }, [router.isReady, router.query, customers]);
 
@@ -411,55 +420,72 @@ export default function NewOrderPage() {
                 <h2 className="text-lg font-semibold text-gray-900">
                   👤 Cliente
                 </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowNewCustomerModal(true)}
-                  className="text-sm font-bold text-blue-600 hover:text-blue-700 underline"
-                >
-                  + Novo Cliente
-                </button>
+                {!isLinkedToLead && (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewCustomerModal(true)}
+                    className="text-sm font-bold text-blue-600 hover:text-blue-700 underline"
+                  >
+                    + Novo Cliente
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-4">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Filtrar clientes por nome ou telefone..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-1 focus:ring-blue-500"
-                  />
+              {isLinkedToLead ? (
+                /* Quando vinculado a um lead: exibe o cliente fixo, sem seleção */
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">{formData.customer_name}</p>
+                    {formData.customer_phone && (
+                      <p className="text-xs text-green-600">{formData.customer_phone}</p>
+                    )}
+                  </div>
+                  <span className="ml-auto text-xs text-green-500 font-medium">Vinculado automaticamente</span>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Selecionar Cliente
-                  </label>
-                  <select
-                    value={formData.customer_id}
-                    onChange={handleCustomerChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.customer_id
-                        ? 'border-red-300'
-                        : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Selecione um cliente</option>
-                    {customers
-                      .filter(c => 
-                        c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
-                        c.phone.includes(customerSearch)
-                      )
-                      .map((customer) => (
-                        <option key={customer.id} value={customer.id}>
-                          {customer.name} ({customer.phone})
-                        </option>
-                      ))}
-                  </select>
-                  {errors.customer_id && (
-                    <p className="text-red-600 text-sm mt-1">{errors.customer_id}</p>
-                  )}
+              ) : (
+                /* Seleção manual de cliente */
+                <div className="space-y-4">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Filtrar clientes por nome ou telefone..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 text-sm focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Selecionar Cliente
+                    </label>
+                    <select
+                      value={formData.customer_id}
+                      onChange={handleCustomerChange}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.customer_id
+                          ? 'border-red-300'
+                          : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">Selecione um cliente</option>
+                      {customers
+                        .filter(c => 
+                          c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+                          c.phone.includes(customerSearch)
+                        )
+                        .map((customer) => (
+                          <option key={customer.id} value={customer.id}>
+                            {customer.name} ({customer.phone})
+                          </option>
+                        ))}
+                    </select>
+                    {errors.customer_id && (
+                      <p className="text-red-600 text-sm mt-1">{errors.customer_id}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Agendamento */}
@@ -543,68 +569,89 @@ export default function NewOrderPage() {
                 <p className="text-red-600 text-sm mb-4">{errors.items}</p>
               )}
 
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Adicionar Produtos
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {products.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => handleAddProduct(product.id)}
-                      className="p-3 text-left border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 transition"
-                    >
-                      <div className="font-medium text-gray-900">{product.name}</div>
-                      <div className="text-sm text-gray-600">
-                        R$ {product.price.toFixed(2)}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              {/* Campo de busca de produtos */}
+              <div className="mb-3">
+                <input
+                  type="text"
+                  placeholder="Buscar produto por nome..."
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                />
               </div>
 
-              {/* Items List */}
+              {/* Lista compacta de produtos */}
+              <div className="mb-4 border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                {products
+                  .filter(p =>
+                    p.name.toLowerCase().includes(productSearch.toLowerCase())
+                  )
+                  .map((product) => {
+                    const alreadyAdded = formData.items.find(i => i.product_id === product.id);
+                    return (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => handleAddProduct(product.id)}
+                        className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition ${
+                          alreadyAdded
+                            ? 'bg-blue-50 hover:bg-blue-100'
+                            : 'bg-white hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className={`text-sm font-medium ${
+                          alreadyAdded ? 'text-blue-700' : 'text-gray-800'
+                        }`}>
+                          {alreadyAdded && <span className="mr-1.5 text-blue-500">✓</span>}
+                          {product.name}
+                        </span>
+                        <span className="text-xs text-gray-500 ml-4 shrink-0">
+                          R$ {product.price.toFixed(2)}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+
+              {/* Itens selecionados */}
               {formData.items.length > 0 && (
-                <div className="space-y-3 border-t pt-6">
+                <div className="space-y-2 border-t pt-4">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Itens do Pedido</p>
                   {formData.items.map((item) => {
                     const product = products.find((p) => p.id === item.product_id);
                     return (
                       <div
                         key={item.product_id}
-                        className="flex items-center justify-between bg-gray-50 p-4 rounded-lg"
+                        className="flex items-center gap-3 bg-gray-50 px-3 py-2 rounded-lg"
                       >
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {product?.name}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            R$ {item.unit_price.toFixed(2)} x {item.quantity} =
-                            R$ {(item.unit_price * item.quantity).toFixed(2)}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="number"
-                            min="1"
-                            value={item.quantity}
-                            onChange={(e) =>
-                              handleQuantityChange(
-                                item.product_id,
-                                parseInt(e.target.value) || 1
-                              )
-                            }
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveProduct(item.product_id)}
-                            className="px-3 py-1 text-red-600 hover:bg-red-50 rounded transition"
-                          >
-                            Remover
-                          </button>
-                        </div>
+                        <span className="flex-1 text-sm font-medium text-gray-900 truncate">
+                          {product?.name}
+                        </span>
+                        <span className="text-xs text-gray-500 shrink-0">
+                          R$ {item.unit_price.toFixed(2)}
+                        </span>
+                        <input
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) =>
+                            handleQuantityChange(
+                              item.product_id,
+                              parseInt(e.target.value) || 1
+                            )
+                          }
+                          className="w-14 px-2 py-1 border border-gray-300 rounded text-center text-sm"
+                        />
+                        <span className="text-xs font-bold text-gray-700 shrink-0 w-20 text-right">
+                          R$ {(item.unit_price * item.quantity).toFixed(2)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduct(item.product_id)}
+                          className="text-red-400 hover:text-red-600 text-xs font-bold shrink-0 transition"
+                        >
+                          ✕
+                        </button>
                       </div>
                     );
                   })}
