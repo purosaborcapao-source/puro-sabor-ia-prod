@@ -2,6 +2,24 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 import { ZapiWebhookSchema, extractMessageContent } from "./schema.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+// ─── Geração de hash simples para content dedup ────────────────────────────
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Converte para 32bit int
+  }
+  return Math.abs(hash).toString(36);
+}
+
+// Fallback external_id quando Z-API não envia messageId
+// Usa phone + conteúdo + timestamp arredondado a 10s (tolerância de reentrega)
+function buildFallbackExternalId(phone: string, content: string, momment?: number): string {
+  const ts = momment ? Math.floor(momment / 10000) : Math.floor(Date.now() / 10000);
+  return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
+}
+
 export async function handleZapiWebhook(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     return new Response(
@@ -13,15 +31,12 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
   try {
     const body = await request.json();
 
-    console.log("🔔 [webhook-zapi] Payload recebido:", JSON.stringify(body).substring(0, 200));
-
     // Validate with real Z-API schema
     const parsed = ZapiWebhookSchema.parse(body);
 
-    // Ignore non-message events (status updates, read receipts, etc.)
+    // Ignorar eventos que não são mensagens de entrada de conteúdo
     if (!parsed.isMessage && !parsed.text && !parsed.image && !parsed.audio && !parsed.document) {
-      console.log("ℹ️ [webhook-zapi] Evento ignorado (não é mensagem de entrada)");
-      return new Response(JSON.stringify({ success: true, ignored: true }), {
+      return new Response(JSON.stringify({ success: true, ignored: true, reason: "not_a_message_event" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -29,16 +44,69 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
 
     const { content, type, media_url } = extractMessageContent(parsed);
 
-    console.log("🔄 [webhook-zapi] Mensagem recebida:", {
-      phone: parsed.phone,
-      type,
-      content: content.substring(0, 60),
-    });
+    // ─── Camada 1: Construir external_id robusto ───────────────────────────
+    // Usa messageId real da Z-API quando disponível; caso contrário, gera fallback
+    // por hash de conteúdo para proteger contra reentregas sem messageId.
+    const externalId = parsed.messageId
+      ? `zapi:${parsed.messageId}`
+      : buildFallbackExternalId(parsed.phone, content, parsed.momment);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ─── Camada 2: Early check — ANTES de qualquer processamento ──────────
+    // Evita findOrCreateCustomer, process-message e toda a lógica downstream
+    // para mensagens que já foram processadas.
+    const { data: existingMessage } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("external_id", externalId)
+      .maybeSingle();
+
+    if (existingMessage) {
+      console.log(`⚡ [webhook-zapi] Duplicata detectada (early check): ${externalId}`);
+      return new Response(
+        JSON.stringify({ success: true, status: "already_processed", message_id: existingMessage.id }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Camada 3: Content dedup — mesma mensagem nos últimos 30 segundos ──
+    // Protege contra retry interno da Z-API que gera um messageId diferente
+    // para exatamente o mesmo conteúdo (ex: falha e reenvio automático).
+    const contentHash = simpleHash(`${parsed.phone}:${content}:${type}`);
+    const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
+    const normalizedPhone = parsed.phone.replace(/\D/g, "");
+    const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
+
+    const { data: contentDuplicate } = await supabase
+      .from("messages")
+      .select("id")
+      .eq("phone", normalizedPhone)
+      .eq("direction", direction)
+      .eq("type", type)
+      .eq("content", content)
+      .gte("created_at", thirtySecondsAgo)
+      .limit(1)
+      .maybeSingle();
+
+    if (contentDuplicate) {
+      console.log(`⚡ [webhook-zapi] Duplicata de conteúdo (últimos 30s): ${contentHash}`);
+      return new Response(
+        JSON.stringify({ success: true, status: "duplicate_content", existing_message_id: contentDuplicate.id }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Processamento normal a partir daqui ─────────────────────────────
+    console.log("🔄 [webhook-zapi] Mensagem nova:", {
+      phone: parsed.phone,
+      type,
+      externalId,
+      content: content.substring(0, 60),
+    });
 
     // 1. Find or create customer
     const customer = await findOrCreateCustomer(supabase, parsed.phone, parsed.senderName || parsed.chatName);
@@ -50,30 +118,30 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       );
     }
 
-    console.log("✅ [webhook-zapi] Cliente identificado:", customer.id);
-
     const direction = parsed.fromMe ? "OUTBOUND" : "INBOUND";
 
-    // 2. Save message to DB with Idempotency (Upsert)
+    // 2. Salvar mensagem com external_id garantido + content_hash no payload
     const { data: messageRecord, error: messageError } = await supabase
       .from("messages")
       .upsert({
-        external_id: parsed.messageId,
+        external_id: externalId,
         customer_id: customer.id,
-        phone: parsed.phone,
+        phone: parsed.phone.replace(/\D/g, ""),
         direction,
         type,
         content,
         media_url,
+        sender_name: parsed.senderName || parsed.chatName,
         payload: {
           raw_text: content,
+          content_hash: contentHash,         // armazenado para content dedup futuro
           zapi_message_id: parsed.messageId,
           zapi_id: parsed.zaapId,
           sender_name: parsed.senderName,
           fromMe: parsed.fromMe,
         },
         zapi_status: "DELIVERED",
-      }, { onConflict: "external_id" })
+      }, { onConflict: "external_id" })     // Camada 4: proteção contra race conditions
       .select()
       .maybeSingle();
 
@@ -82,14 +150,17 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       throw messageError;
     }
 
-    console.log("✅ [webhook-zapi] Mensagem salva:", messageRecord.id);
+    if (!messageRecord) {
+      // Upsert retornou null: conflito de external_id detectado na camada de BD
+      console.log(`⚡ [webhook-zapi] Duplicata detectada (DB constraint): ${externalId}`);
+      return new Response(
+        JSON.stringify({ success: true, status: "already_processed_db_constraint" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    // 3. Trigger AI processing for text messages only (passive mode)
-    // ONLY for INBOUND messages (customer to shop)
-    if (type === "text" && direction === "INBOUND" && messageRecord) {
-      console.log("🔄 [webhook-zapi] Disparando process-message...");
-
-      // Fire-and-forget: don't await so webhook responds fast
+    // 3. Disparar processamento de IA apenas para mensagens INBOUND de texto genuinamente novas
+    if (type === "text" && direction === "INBOUND") {
       fetch(
         `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-message`,
         {
@@ -111,13 +182,16 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     return new Response(
       JSON.stringify({
         success: true,
-        message_id: messageRecord?.id,
+        status: "processed",
+        message_id: messageRecord.id,
         customer_id: customer.id,
         type,
         direction,
+        external_id: externalId,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error("❌ [webhook-zapi] Validação falhou:", error.errors);
@@ -142,7 +216,6 @@ async function findOrCreateCustomer(
   phone: string,
   displayName?: string
 ): Promise<{ id: string; name: string } | null> {
-  // Normalize phone: remove non-digits
   const normalizedPhone = phone.replace(/\D/g, "");
 
   const { data: existing, error: searchError } = await supabase
@@ -162,11 +235,19 @@ async function findOrCreateCustomer(
       .single();
 
     if (createError) {
+      // Race condition: outro request criou o customer simultaneamente
+      if (createError.code === "23505") {
+        const { data: raceWinner } = await supabase
+          .from("customers")
+          .select("id, name")
+          .eq("phone", normalizedPhone)
+          .single();
+        return raceWinner;
+      }
       console.error("❌ Erro ao criar customer:", createError);
       return null;
     }
 
-    console.log("✅ Novo customer criado:", newCustomer.id);
     return newCustomer;
   }
 

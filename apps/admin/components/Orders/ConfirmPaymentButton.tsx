@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Check, AlertCircle } from 'lucide-react'
-import { supabase } from '@atendimento-ia/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface ConfirmPaymentButtonProps {
@@ -30,31 +29,38 @@ export function ConfirmPaymentButton({
       setError(null)
       setIsLoading(true)
 
-      console.log('💰 Confirmando pagamento:', { paymentEntryId, orderId, paymentAmount })
+      // Usar a API route para confirmação — garante verificação de role no backend
+      const supabaseToken = (user as any)?.access_token ||
+        (() => {
+          try {
+            const raw = Object.keys(localStorage).find(k => k.includes('auth-token'))
+            if (raw) return JSON.parse(localStorage.getItem(raw) || '{}')?.access_token
+          } catch { return '' }
+        })()
 
-      // 1. Atualizar a entrada de pagamento
-      const { error: updateErr } = await supabase
-        .from('payment_entries')
-        .update({
-          status: 'CONFIRMADO',
-          confirmed_by: user?.id,
-          confirmed_at: new Date().toISOString()
+      const response = await fetch('/api/payments/confirm', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseToken || ''}`
+        },
+        body: JSON.stringify({
+          payment_entry_id: paymentEntryId,
+          confirm: true
         })
-        .eq('id', paymentEntryId)
+      })
 
-      if (updateErr) throw updateErr
+      const result = await response.json()
 
-      if (updateErr) throw updateErr
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao confirmar pagamento')
+      }
 
-      console.log('✅ Pagamento confirmado no banco.')
-
-      // Success
       setShowConfirmation(false)
       if (onSuccess) {
         onSuccess()
       }
     } catch (err) {
-      console.error('❌ Erro ao confirmar pagamento:', err)
       const message = err instanceof Error ? err.message : 'Erro ao confirmar pagamento'
       setError(message)
     } finally {

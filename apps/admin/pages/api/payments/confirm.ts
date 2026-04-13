@@ -61,10 +61,10 @@ async function handleConfirmPayment(
         .json({ error: 'Missing required fields: payment_entry_id, confirm' })
     }
 
-    // 1. Fetch the payment entry to get order_id
+    // 1. Fetch the payment entry (campo correto: total, não total_valor)
     const { data: paymentEntry, error: fetchError } = await supabaseServer
       .from('payment_entries')
-      .select('*, orders(total_valor)')
+      .select('*, orders(id, total, payment_status)')
       .eq('id', payment_entry_id)
       .single()
 
@@ -72,7 +72,14 @@ async function handleConfirmPayment(
       return res.status(404).json({ error: 'Payment entry not found' })
     }
 
-    // 2. Update payment_entry status
+    // Impedir confirmação de pagamento já finalizado
+    if (paymentEntry.status === 'CONFIRMADO' && confirm) {
+      return res.status(400).json({ error: 'Pagamento já está confirmado' })
+    }
+
+    // 2. Atualizar status do pagamento
+    // NOTA: O trigger sync_order_payment_status cuida de atualizar orders.payment_status
+    // automaticamente. Não fazemos isso manualmente aqui para evitar conflito.
     const newStatus = confirm ? 'CONFIRMADO' : 'REJEITADO'
     const { data: updatedPayment, error: updateError } = await supabaseServer
       .from('payment_entries')
@@ -91,45 +98,17 @@ async function handleConfirmPayment(
         .json({ error: `Failed to update payment entry: ${updateError.message}` })
     }
 
-    // 3. Calculate new order payment status
-    const { data: allPayments, error: paymentsError } = await supabaseServer
-      .from('payment_entries')
-      .select('*')
-      .eq('order_id', paymentEntry.order_id)
-      .eq('status', 'CONFIRMADO')
-
-    if (paymentsError) {
-      return res.status(500).json({ error: `Failed to fetch payments: ${paymentsError.message}` })
-    }
-
-    // Calculate total confirmed amount
-    const totalConfirmed = allPayments?.reduce((sum, p) => sum + (p.valor || 0), 0) || 0
-    const orderTotal = paymentEntry.orders?.total_valor || 0
-
-    // Determine new payment status
-    let newPaymentStatus: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE' = 'SINAL_PENDENTE'
-
-    if (totalConfirmed >= orderTotal) {
-      newPaymentStatus = 'QUITADO'
-    } else if (totalConfirmed > 0 && totalConfirmed < orderTotal) {
-      newPaymentStatus = 'SINAL_PAGO'
-    }
-
-    // 4. Update order payment_status
+    // 3. Buscar order atualizado (o trigger já atualizou payment_status)
     const { data: updatedOrder, error: orderError } = await supabaseServer
       .from('orders')
-      .update({
-        payment_status: newPaymentStatus,
-        updated_at: new Date().toISOString()
-      })
+      .select('id, total, payment_status')
       .eq('id', paymentEntry.order_id)
-      .select()
       .single()
 
     if (orderError) {
       return res
         .status(500)
-        .json({ error: `Failed to update order: ${orderError.message}` })
+        .json({ error: `Failed to fetch updated order: ${orderError.message}` })
     }
 
     return res.status(200).json({
@@ -137,11 +116,9 @@ async function handleConfirmPayment(
       data: {
         payment: updatedPayment,
         order: updatedOrder,
-        totalConfirmed,
-        orderTotal,
-        paymentStatus: newPaymentStatus
+        paymentStatus: updatedOrder.payment_status
       },
-      message: `Payment ${newStatus.toLowerCase()} successfully`
+      message: `Pagamento ${newStatus === 'CONFIRMADO' ? 'confirmado' : 'rejeitado'} com sucesso`
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
