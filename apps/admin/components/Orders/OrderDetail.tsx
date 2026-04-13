@@ -294,7 +294,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                         try {
                           const { error } = await supabase
                             .from('orders')
-                            .update({ status: 'CONFIRMADO', payment_status: 'SINAL_PAGO' })
+                            .update({ status: 'CONFIRMADO' })
                             .eq('id', orderId);
                           if (error) throw error;
                           setRefreshKey(k => k + 1);
