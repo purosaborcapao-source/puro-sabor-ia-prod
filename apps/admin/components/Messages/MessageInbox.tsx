@@ -340,6 +340,5 @@ export const MessageInbox = React.memo(function MessageInbox() {
         <OrderContextPanel customerId={selectedCustomerId || ""} />
       </div>
     </div>
-    </div>
   );
 });

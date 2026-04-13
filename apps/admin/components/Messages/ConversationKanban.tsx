@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { SLATimer } from "./SLATimer";
-import { ConversationStatusBadge } from "./ConversationStatusBadge";
 import { ThreadModal } from "./ThreadModal";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -264,8 +263,6 @@ export const ConversationKanban: React.FC = () => {
     }
     return cards.filter((c) => c.status === colId);
   };
-
-  const totalPaymentPending = cards.filter((c) => c.has_pending_payment).length;
 
   if (loading) {
     return (

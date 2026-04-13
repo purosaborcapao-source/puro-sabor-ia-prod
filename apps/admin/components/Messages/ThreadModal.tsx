@@ -4,13 +4,11 @@ import { MessageThread } from "./MessageThread";
 
 interface ThreadModalProps {
   customerId: string | null;
-  customerName?: string;
   onClose: () => void;
 }
 
 export const ThreadModal: React.FC<ThreadModalProps> = ({
   customerId,
-  customerName,
   onClose,
 }) => {
   // Fechar com ESC

@@ -72,7 +72,6 @@ export const MessageReplyForm: React.FC<MessageReplyFormProps> = ({ onSend }) =>
   };
 
   const uploadFile = async (file: File): Promise<string> => {
-    const ext = file.name ? file.name.split('.').pop() || "" : "";
     const nameWithoutSpacing = file.name ? file.name.replace(/[^a-zA-Z0-9.-]/g, '_') : "audio_capture.webm";
     const fileName = `${Date.now()}-${nameWithoutSpacing}`;
     const bucketPath = `uploads/${fileName}`;
