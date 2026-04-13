@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
-import { AlertCircle, History, User, Info, CheckCircle2, XCircle } from 'lucide-react'
+import { AlertCircle, History, User, Info, CheckCircle2 } from 'lucide-react'
 
 interface OrderChange {
   id: string

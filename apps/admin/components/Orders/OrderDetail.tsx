@@ -237,7 +237,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
             <div>
               <div className="flex items-center gap-3 mb-1">
                 <h1 className={`${isCompact ? 'text-xl' : 'text-3xl'} font-bold text-gray-900 dark:text-white`}>
-                  Pedido #{order.order_number || String(order.number).slice(-4)}
+                  Pedido #{String(order.number).slice(-4)}
                 </h1>
                 <button 
                   onClick={() => setIsCatalogOpen(true)}
@@ -511,7 +511,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
           orderTotal={order.total}
           sinalPago={paymentEntries
             .filter(p => p.status === 'CONFIRMADO')
-            .reduce((sum, p) => sum + Number(p.valor), 0)}
+            .reduce((sum, p) => sum + p.amount, 0)}
           onClose={() => setShowPaymentModal(false)}
           onSuccess={() => {
             setShowPaymentModal(false);

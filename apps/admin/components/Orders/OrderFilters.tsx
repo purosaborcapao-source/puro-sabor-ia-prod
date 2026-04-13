@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { SearchIcon, FilterIcon, XIcon } from 'lucide-react'
+import { Search, Filter, X } from 'lucide-react'
 
 interface OrderFiltersProps {
   onStatusChange: (status: string | null) => void
@@ -38,7 +38,7 @@ export const OrderFilters = React.memo(function OrderFilters({
     <div className="space-y-4">
       {/* Busca */}
       <div className="relative">
-        <SearchIcon className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+        <Search className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
         <input
           type="text"
           placeholder="Buscar por cliente, número do pedido ou produto..."
@@ -54,7 +54,7 @@ export const OrderFilters = React.memo(function OrderFilters({
           onClick={() => setIsOpen(!isOpen)}
           className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors md:hidden"
         >
-          <FilterIcon className="w-4 h-4" />
+          <Filter className="w-4 h-4" />
           Filtros
         </button>
 
@@ -63,7 +63,7 @@ export const OrderFilters = React.memo(function OrderFilters({
             onClick={handleClearFilters}
             className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
           >
-            <XIcon className="w-4 h-4" />
+            <X className="w-4 h-4" />
             Limpar
           </button>
         )}

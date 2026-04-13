@@ -14,7 +14,6 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   const [activeTab, setActiveTab] = useState<"order" | "history" | "management">("order");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   
   // Notas e Contexto
   const [customerNotes, setCustomerNotes] = useState<string>("");
@@ -33,7 +32,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
 
   const loadCustomerOrders = async () => {
     try {
-      setLoading(true);
+
       const { data, error } = await supabase
         .from("orders")
         .select(`
@@ -86,7 +85,6 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
     } catch (err) {
       console.error("Erro ao carregar detalhes do contexto:", err);
     } finally {
-      setLoading(false);
     }
   };
   const handleSaveInternalNotes = async () => {
@@ -237,7 +235,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                    <p className="text-[10px] text-gray-400 uppercase mb-1">Notas Gerais do Lead</p>
                    <p className="text-xs text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-900 rounded italic">
-                     "{customerNotes}"
+                      {customerNotes}
                    </p>
                  </div>
                )}

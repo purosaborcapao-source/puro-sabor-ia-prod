@@ -3,7 +3,7 @@ import { supabase } from "@atendimento-ia/supabase";
 import { MessageThread } from "./MessageThread";
 import { MessageListItem } from "./MessageListItem";
 import { OrderContextPanel } from "./OrderContextPanel";
-import { AlertCircle, MessageSquare, RefreshCw } from "lucide-react";
+import { AlertCircle, MessageSquare, RefreshCw, Search } from "lucide-react";
 
 interface MessageChat {
   customer_id: string;
@@ -215,7 +215,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
           {/* Busca por Nome */}
           <div className="mb-4 relative">
-            <SearchIcon className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar por nome do cliente..."
