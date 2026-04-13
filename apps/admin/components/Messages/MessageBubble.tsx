@@ -51,6 +51,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
             )}
           </div>
+        ) : message.type === "AUDIO" && message.media_url ? (
+          <div className="mb-2">
+            <audio
+              controls
+              src={message.media_url}
+              className="w-full max-w-[280px] h-10"
+            />
+            {message.content && message.content !== "[Áudio]" && (
+              <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
+            )}
+          </div>
         ) : (
           <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap">{message.content}</p>
         )}

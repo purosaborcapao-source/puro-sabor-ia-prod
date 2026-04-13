@@ -144,7 +144,10 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     }
   };
 
-  const handleSendReply = async (content: string) => {
+  const handleSendReply = async (
+    content: string,
+    attachment?: { type: string; url: string; fileName?: string }
+  ) => {
     if (!customerPhone) {
       setError("Telefone do cliente não encontrado.");
       return;
@@ -152,16 +155,47 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
     try {
       setError(null);
-      // Chamar API de envio que já lida com Z-API e gravação no banco
+
+      let payload: Record<string, unknown> = {
+        phone: customerPhone,
+        customerId,
+      };
+
+      if (attachment) {
+        if (attachment.type === "image") {
+          payload = {
+            ...payload,
+            type: "image",
+            imageUrl: attachment.url,
+            caption: content,
+          };
+        } else if (attachment.type === "audio") {
+          payload = {
+            ...payload,
+            type: "audio",
+            audioUrl: attachment.url,
+          };
+        } else if (attachment.type === "document") {
+          payload = {
+            ...payload,
+            type: "document",
+            documentUrl: attachment.url,
+            fileName: attachment.fileName,
+            caption: content,
+          };
+        }
+      } else {
+        payload = {
+          ...payload,
+          type: "text",
+          message: content,
+        };
+      }
+
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "text",
-          phone: customerPhone,
-          message: content,
-          customerId,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -169,20 +203,15 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         throw new Error(text || "Erro ao conectar com Z-API");
       }
 
-      // Atualizar last_outbound_at
       await supabase
         .from("conversations")
-        .update({ 
-           last_outbound_at: new Date().toISOString(),
-           status: "IN_PROGRESS" // Garante que a conversa fica em atendimento após enviar algo
+        .update({
+          last_outbound_at: new Date().toISOString(),
+          status: "IN_PROGRESS",
         })
         .eq("customer_id", customerId);
-
-      // O Realtime atualizará as mensagens nativamente.
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Erro ao enviar mensagem"
-      );
+      setError(err instanceof Error ? err.message : "Erro ao enviar mensagem");
     }
   };
 

@@ -58,10 +58,13 @@ export const MessageInbox = React.memo(function MessageInbox() {
       const convs = convsRes.data || [];
       const convMap = new Map(convs.map((c) => [c.customer_id, c]));
 
+      // Filtrar mensagens sem customer_id (ignorar órfãs - não vinculadas a nenhum cliente)
+      const validMessages = data?.filter((msg: any) => msg.customer_id);
+
       // Agrupar por customer_id e calcular unread_count (INBOUNDs desde o último OUTBOUND)
       const chatMap = new Map<string, MessageChat>();
 
-      data?.forEach((msg: any) => {
+      validMessages?.forEach((msg: any) => {
         const customerId = msg.customer_id;
         if (!chatMap.has(customerId)) {
           const conv = convMap.get(customerId);

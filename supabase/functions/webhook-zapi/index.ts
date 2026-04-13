@@ -132,26 +132,44 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     });
 
     // 1. Find or create customer
-    // Se for OUTBOUND (aparelho), não criamos novo customer/lead. Apenas vinculamos se já existir.
+    // Para OUTBOUND (mensagens do апarelho), tentamos vincular a um customer existente
+    // Se não existir, tentamos criar para garantir a vinculação
     const customer = await findOrCreateCustomer(
       supabase, 
       normalizedPhone, 
       parsed.senderName || parsed.chatName,
-      false // Permitir criação de cliente mesmo em mensagens OUTBOUND para garantir vinculação
+      direction === "INBOUND" // allowSearchOnly: true para OUTBOUND (só buscar), false para INBOUND (criar se não existir)
     );
 
-    if (!customer) {
-      console.log(`ℹ️ [webhook-zapi] Customer não encontrado para mensagem OUTBOUND: ${normalizedPhone}. Ignorando.`);
-      return new Response(
-        JSON.stringify({ success: true, ignored: true, reason: "outbound_customer_not_found" }),
-        { status: 200, headers: { "Content-Type": "application/json" },
-      });
+    if (!customer && direction === "OUTBOUND") {
+      console.log(`ℹ️ [webhook-zapi] Tentando buscar customer por phone parcial para OUTBOUND: ${normalizedPhone}`);
+      const customerByPartialPhone = await findCustomerByPartialPhone(supabase, normalizedPhone);
+      if (customerByPartialPhone) {
+        console.log(`✅ [webhook-zapi] Customer encontrado por phone parcial: ${customerByPartialPhone.id}`);
+      } else {
+        console.log(`ℹ️ [webhook-zapi] Customer não encontrado para OUTBOUND: ${normalizedPhone}. Ignorando.`);
+        return new Response(
+          JSON.stringify({ success: true, ignored: true, reason: "outbound_customer_not_found" }),
+          { status: 200, headers: { "Content-Type": "application/json" },
+        });
+      }
     }
 
     // 2. Inserir mensagem simples (sem upsert para evitar erros de schema)
+    // Usar o customer encontrado (pode ser findOrCreateCustomer ou findCustomerByPartialPhone)
+    const activeCustomer = customer || await findCustomerByPartialPhone(supabase, normalizedPhone);
+    
+    if (!activeCustomer) {
+      console.log(`⚠️ [webhook-zapi] Nenhum customer encontrado para vincular: ${normalizedPhone}`);
+      return new Response(
+        JSON.stringify({ success: true, ignored: true, reason: "no_customer_found" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     const insertData = {
       external_id: externalId,
-      customer_id: customer.id,
+      customer_id: activeCustomer.id,
       phone: normalizedPhone,
       direction,
       type: messageType,
@@ -194,7 +212,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
           },
           body: JSON.stringify({
             message_id: insertedMsg.id,
-            customer_id: customer.id,
+            customer_id: activeCustomer.id,
             phone: normalizedPhone,
             text: content,
           }),
@@ -206,7 +224,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       JSON.stringify({
         success: true,
         status: "processed",
-        customer_id: customer.id,
+        customer_id: activeCustomer.id,
         type,
         direction,
       }),
@@ -277,6 +295,50 @@ async function findOrCreateCustomer(
   }
 
   console.error("❌ Erro ao buscar customer:", searchError);
+  return null;
+}
+
+async function findCustomerByPartialPhone(
+  supabase: ReturnType<typeof createClient>,
+  phone: string
+): Promise<{ id: string; name: string } | null> {
+  // Tentar variações de phone:
+  // 1. Com DDD (55xx) -> sem DDD (xx)
+  // 2. Sem DDD (xx) -> com DDD (55xx)
+  // 3. Com +55 -> sem +
+  const variations = [
+    phone.replace(/^55(\d{2})/, "$1"), // 5521... -> 21...
+    phone.replace(/^(\d{2})$/, "55$1"), // 21... -> 5521...
+    phone.replace(/^\+/, ""), // +5521... -> 5521...
+  ];
+
+  for (const variant of variations) {
+    const { data: existing, error } = await supabase
+      .from("customers")
+      .select("id, name")
+      .eq("phone", variant)
+      .single();
+
+    if (!error && existing) {
+      console.log(`✅ [findCustomerByPartialPhone] Encontrado com variação: ${variant}`);
+      return existing;
+    }
+  }
+
+  // Buscar por phone que termina com os últimos 8 dígitos
+  const last8Digits = phone.slice(-8);
+  const { data: bySuffix, error: suffixError } = await supabase
+    .from("customers")
+    .select("id, name")
+    .like("phone", `%${last8Digits}`)
+    .limit(1)
+    .single();
+
+  if (!suffixError && bySuffix) {
+    console.log(`✅ [findCustomerByPartialPhone] Encontrado por sufixo: ${last8Digits}`);
+    return bySuffix;
+  }
+
   return null;
 }
 
