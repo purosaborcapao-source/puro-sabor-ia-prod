@@ -162,7 +162,7 @@ export default function ConfirmacaoPage() {
               <Printer className="w-4 h-4" /> Imprimir / PDF
            </button>
            <a 
-             href={`https://wa.me/5511999999999?text=Olá! Gostaria de falar sobre o meu pedido #${order.number}`} 
+             href={`https://wa.me/5551999056903?text=${encodeURIComponent(`Olá! Gostaria de falar sobre o meu pedido #${order.number}`)}`} 
              target="_blank"
              rel="noopener noreferrer"
              className="flex-1 py-4 bg-emerald-500 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"

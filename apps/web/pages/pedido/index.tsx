@@ -8,14 +8,21 @@ import { CartDrawer } from '../../components/catalog/CartDrawer';
 import { MobileCartBar } from '../../components/catalog/MobileCartBar';
 import { useProducts, Product } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
+import { CheckoutForm, CheckoutData } from '../../components/catalog/CheckoutForm';
+import { supabasePublic } from '../../lib/supabase-public';
+import { useRouter } from 'next/router';
 
 export default function PedidoPage() {
   const { productsByCategory, loading } = useProducts();
-  const { items, addItem, removeItem, total } = useCart();
+  const { items, addItem, removeItem, total, sinalValor, clearCart } = useCart();
+  const router = useRouter();
 
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+
+  const [isCheckoutMode, setIsCheckoutMode] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Define categoria inicial após carregar
   React.useEffect(() => {
@@ -34,6 +41,79 @@ export default function PedidoPage() {
       addItem(selectedProduct, quantity, customizations);
     }
   };
+
+  const handleGoToCheckout = () => {
+    if (items.length === 0) return;
+    setIsCartOpen(false);
+    setIsCheckoutMode(true);
+    window.scrollTo(0, 0);
+  };
+
+  const submitOrderToDB = async (data: CheckoutData) => {
+    setIsSubmitting(true);
+    try {
+      // 2. Criar Pedido (Order)
+      // Ajuste o Date para bater com timestamp da entrega
+      const [year, month, day] = data.date.split('-');
+      const targetDate = new Date(`${year}-${month}-${day}T${data.time}:00`);
+
+      const { data: orderParams, error: orderErr } = await supabasePublic
+        .from('orders')
+        .insert({
+          total: total,
+          sinal_valor: sinalValor,
+          payment_status: 'SINAL_PENDENTE',
+          delivery_date: targetDate.toISOString()
+        })
+        .select('id')
+        .single();
+        
+      if (orderErr) throw orderErr;
+      const orderId = orderParams.id;
+
+      // 3. Criar Order Items
+      const orderItemsToInsert = items.map(item => ({
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price: item.price,
+        customizations: item.customizations || {}
+      }));
+
+      const { error: itemsErr } = await supabasePublic
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (itemsErr) throw itemsErr;
+
+      // 4. Limpar e rotear!
+      clearCart();
+      router.push(`/pedido/confirmacao/${orderId}`);
+
+    } catch (error) {
+      console.error("Erro ao salvar pedido: ", error);
+      alert("Ocorreu um erro ao gerar seu pedido. Tente novamente ou chame no WhatsApp.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isCheckoutMode) {
+    return (
+      <div className="min-h-screen pb-12 bg-gray-50">
+        <Head>
+          <title>Finalizar Pedido | Puro Sabor</title>
+        </Head>
+        <CheckoutForm
+          total={total}
+          sinalValor={sinalValor}
+          isSubmitting={isSubmitting}
+          onBack={() => setIsCheckoutMode(false)}
+          onSubmit={submitOrderToDB}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-32">
@@ -117,7 +197,7 @@ export default function PedidoPage() {
         items={items}
         onRemoveItem={removeItem}
         total={total}
-        onCheckout={() => {}}
+        onCheckout={handleGoToCheckout}
       />
 
       {/* Fixed Mobile Bar */}

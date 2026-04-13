@@ -10,16 +10,12 @@ interface CheckoutFormProps {
 }
 
 export interface CheckoutData {
-  name: string;
-  phone: string;
   date: string;
   time: string;
 }
 
 export function CheckoutForm({ total, sinalValor, onBack, onSubmit, isSubmitting }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutData>({
-    name: '',
-    phone: '',
     date: '',
     time: ''
   });
@@ -29,7 +25,7 @@ export function CheckoutForm({ total, sinalValor, onBack, onSubmit, isSubmitting
     onSubmit(formData);
   };
 
-  const isFormValid = formData.name && formData.phone && formData.date && formData.time;
+  const isFormValid = formData.date && formData.time;
 
   return (
     <div className="max-w-xl mx-auto px-6 py-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -46,31 +42,6 @@ export function CheckoutForm({ total, sinalValor, onBack, onSubmit, isSubmitting
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Identificação */}
-        <div className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm space-y-4">
-          <div className="relative">
-            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-200" />
-            <input
-              required
-              type="text"
-              placeholder="Seu Nome Completo"
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
-              className="w-full pl-12 pr-4 py-4 bg-orange-50/50 rounded-2xl border border-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all text-sm font-medium"
-            />
-          </div>
-          <div className="relative">
-            <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-200" />
-            <input
-              required
-              type="tel"
-              placeholder="WhatsApp (ex: 11999999999)"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              className="w-full pl-12 pr-4 py-4 bg-orange-50/50 rounded-2xl border border-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all text-sm font-medium"
-            />
-          </div>
-        </div>
 
         {/* Agendamento */}
         <div className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm space-y-4">

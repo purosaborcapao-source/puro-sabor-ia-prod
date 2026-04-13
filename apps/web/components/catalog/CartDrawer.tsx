@@ -59,23 +59,11 @@ export function CartDrawer({
   items,
   onRemoveItem,
   total,
+  onCheckout,
 }: CartDrawerProps) {
-  const [date, setDate] = React.useState('');
-  const [time, setTime] = React.useState('');
-  const [error, setError] = React.useState('');
-
   if (!isOpen) return null;
 
-  const handleWhatsApp = () => {
-    if (!date || !time) {
-      setError('Por favor, preencha a data e hora da encomenda antes de prosseguir.');
-      return;
-    }
-    setError('');
-    const message = buildWhatsAppMessage(items, total, date, time);
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
+
 
   const targetSinal = total * 0.30;
   const remainder = targetSinal % 50;
@@ -158,30 +146,7 @@ export function CartDrawer({
         {/* Footer */}
         {items.length > 0 && (
           <div className="p-6 bg-white border-t border-orange-50 space-y-4 shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.05)]">
-            <div className="space-y-3 mb-4">
-              <h4 className="text-xs font-bold text-gray-800 uppercase tracking-widest">Informações da Encomenda</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Data</label>
-                  <input 
-                    type="date" 
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full text-sm p-2 border border-orange-100 rounded-xl bg-orange-50/30 focus:outline-none focus:ring-2 focus:ring-orange-200 text-gray-700 font-medium"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-gray-500">Hora</label>
-                  <input 
-                    type="time" 
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full text-sm p-2 border border-orange-100 rounded-xl bg-orange-50/30 focus:outline-none focus:ring-2 focus:ring-orange-200 text-gray-700 font-medium"
-                  />
-                </div>
-              </div>
-              {error && <p className="text-[10px] text-red-500 font-bold animate-in fade-in">{error}</p>}
-            </div>
+
 
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs font-bold text-gray-400 uppercase tracking-widest">
@@ -195,16 +160,15 @@ export function CartDrawer({
             </div>
 
             <button
-              onClick={handleWhatsApp}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-emerald-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+              onClick={onCheckout}
+              className="w-full py-4 bg-[var(--primary-paprica)] hover:bg-orange-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-xs shadow-xl shadow-orange-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
             >
-              <MessageCircle className="w-5 h-5" />
-              Enviar Pedido pelo WhatsApp
+              <ShoppingBag className="w-5 h-5" />
+              Finalizar Pedido
             </button>
 
             <p className="text-[9px] text-center text-gray-400 leading-relaxed">
-              Você será redirecionado ao WhatsApp com o resumo do pedido.<br />
-              Nossa equipe confirmará os detalhes em seguida.
+              Você preencherá seus dados no próximo passo.
             </p>
           </div>
         )}
