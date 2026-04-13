@@ -58,8 +58,8 @@ export const MessageInbox = React.memo(function MessageInbox() {
       if (convsRes.error) throw convsRes.error;
 
       const data = messagesRes.data;
-      const convs = convsRes.data || [];
-      const convMap = new Map(convs.map((c) => [c.customer_id, c]));
+      const convs = convsRes.data as any || [];
+      const convMap = new Map(convs.map((c: any) => [c.customer_id, c]));
 
       // Filtrar mensagens sem customer_id (ignorar órfãs - não vinculadas a nenhum cliente)
       const validMessages = data?.filter((msg: any) => msg.customer_id);
@@ -69,7 +69,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
 
       validMessages?.forEach((msg: any) => {
         const customerId = msg.customer_id;
-        const conv = convMap.get(customerId);
+        const conv = convMap.get(customerId) as any;
         
         // Pula se estiver congelada
         if (conv?.is_blocked) return;

@@ -161,10 +161,10 @@ export const ConversationKanban: React.FC = () => {
       if (messagesRes.error) throw messagesRes.error;
 
       const data = messagesRes.data || [];
-      const convs = convsRes.data || [];
+      const convs = convsRes.data as any || [];
       const orders = ordersRes.data || [];
 
-      const convMap = new Map(convs.map((c) => [c.customer_id, c]));
+      const convMap = new Map(convs.map((c: any) => [c.customer_id, c]));
 
       // Mapa de pedidos com pagamento pendente por customer
       const pendingPaymentMap = new Map<
@@ -182,7 +182,7 @@ export const ConversationKanban: React.FC = () => {
 
       validMessages.forEach((msg: any) => {
         const cid = msg.customer_id;
-        const conv = convMap.get(cid);
+        const conv = convMap.get(cid) as any;
         
         // Pula conversas bloqueadas
         if (conv?.is_blocked) return;

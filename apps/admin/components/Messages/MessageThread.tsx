@@ -99,12 +99,12 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         .single();
         
       if (convData) {
-        setConvStatus(convData.status as ConversationStatus);
-        setLastInboundAt(convData.last_inbound_at);
-        setIsBlocked(convData.is_blocked || false);
+        setConvStatus((convData as any).status as ConversationStatus);
+        setLastInboundAt((convData as any).last_inbound_at);
+        setIsBlocked((convData as any).is_blocked || false);
         
         // Auto-atribuir para Em Atendimento se for Nova
-        if (convData.status === "NEW") {
+        if ((convData as any).status === "NEW") {
           await supabase
             .from("conversations")
             .update({ status: "IN_PROGRESS" })
@@ -256,7 +256,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           <button
             onClick={async () => {
               const novo = !isBlocked;
-              await supabase.from("conversations").update({ is_blocked: novo }).eq("customer_id", customerId);
+              await supabase.from("conversations").update({ is_blocked: novo } as any).eq("customer_id", customerId);
               setIsBlocked(novo);
             }}
             title={isBlocked ? "Descongelar" : "Congelar conversa"}
