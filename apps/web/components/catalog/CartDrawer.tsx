@@ -23,7 +23,9 @@ function buildWhatsAppMessage(items: CartItem[], total: number, date: string, ti
         : `${item.quantity}x`;
     const flavor = item.customizations?.flavor ? ` (${item.customizations.flavor})` : '';
     const notes = item.customizations?.notes ? ` - ${item.customizations.notes}` : '';
-    return `• ${qty} ${item.name}${flavor}${notes}`;
+    // Adicionamos o productId de forma discreta para facilitar o processamento automático
+    const shortId = item.productId.split('-')[0];
+    return `• ${qty} ${item.name}${flavor}${notes} [#${shortId}]`;
   });
 
   const targetSinal = total * 0.30;

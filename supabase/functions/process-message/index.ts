@@ -100,7 +100,7 @@ REGRAS DE EXTRAÇÃO:
     const aiPrompt = settings?.value ? String(settings.value) : basePrompt;
 
     // 5. Mapeamento Direto (Zero-AI) vs Claude API
-    const isWebAppOrder = text.startsWith("Olá! Gostaria de fazer um pedido:");
+    const isWebAppOrder = text.includes("Gostaria de fazer um pedido:");
     let parsed: any;
 
     if (isWebAppOrder) {
@@ -125,14 +125,27 @@ REGRAS DE EXTRAÇÃO:
         let quantity = parseFloat(qtyStr) || 1;
 
         const cleanLine = line.toLowerCase();
-        const matchedProduct = products?.find(p => cleanLine.includes(p.name.toLowerCase().trim()));
+        
+        // Tentar encontrar por ID curto primeiro [#abcd1234]
+        const shortIdMatch = line.match(/\[#([a-f0-9]{8})\]/);
+        let matchedProduct = null;
+        
+        if (shortIdMatch) {
+          const shortId = shortIdMatch[1];
+          matchedProduct = products?.find(p => p.id.startsWith(shortId));
+        }
+        
+        // Fallback por nome
+        if (!matchedProduct) {
+          matchedProduct = products?.find(p => cleanLine.includes(p.name.toLowerCase().trim()));
+        }
         
         return {
           product_id: matchedProduct?.id,
-          product: matchedProduct?.name || line.replace(/•\s*([\d.,]+)(x|g|kg)?/g, '').trim(),
+          product: matchedProduct?.name || line.replace(/•\s*([\d.,]+)(x|g|kg)?/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
           quantity: quantity,
           price: matchedProduct?.price || 0,
-          observation: line.trim()
+          observation: line.replace(/\[#([a-f0-9]{8})\]/g, '').trim()
         };
       });
 
