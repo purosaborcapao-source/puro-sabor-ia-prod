@@ -287,6 +287,26 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
                   }`}>
                     {order.status}
                   </span>
+                  {order.status === 'PENDENTE' && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Confirmar pedido para produção? O sinal pode ser recebido depois.')) return;
+                        try {
+                          const { error } = await supabase
+                            .from('orders')
+                            .update({ status: 'CONFIRMADO', payment_status: 'SINAL_PAGO' })
+                            .eq('id', orderId);
+                          if (error) throw error;
+                          setRefreshKey(k => k + 1);
+                        } catch (err: any) {
+                          alert('Erro: ' + err.message);
+                        }
+                      }}
+                      className="ml-2 px-2 py-1 bg-blue-600 text-white rounded text-[10px] font-bold uppercase hover:bg-blue-700"
+                    >
+                      Confirmar
+                    </button>
+                  )}
                 </div>
                 {order.notes && (
                   <div>

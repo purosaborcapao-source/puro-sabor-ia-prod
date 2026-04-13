@@ -21,7 +21,7 @@ export default async function handler(
   }
 
   // Verify the token by creating a client with it
-  const { data: { user }, error: authError } = await supabaseServer.auth.getUser()
+  const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token)
 
   if (authError || !user) {
     return res.status(401).json({ error: 'Invalid token' })
