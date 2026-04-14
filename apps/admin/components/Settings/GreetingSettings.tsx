@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@atendimento-ia/supabase";
+import type { Json } from "@atendimento-ia/supabase/types";
 import {
   MessageSquare,
   Save,
@@ -140,7 +141,7 @@ export const GreetingSettings: React.FC = () => {
     try {
       await supabase
         .from("settings")
-        .upsert({ key: "bot_greeting_config", value: config as unknown as Record<string, unknown> }, { onConflict: "key" });
+        .upsert({ key: "bot_greeting_config", value: config as unknown as Json }, { onConflict: "key" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
