@@ -64,15 +64,6 @@ export const MessageListItem: React.FC<MessageListItemProps> = ({
         </div>
       </div>
 
-      {/* Operadora Atribuída */}
-      {(chat as any).assigned_operator_name && (
-        <div className="flex items-center gap-1 mb-2">
-          <span className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
-            👤 {(chat as any).assigned_operator_name}
-          </span>
-        </div>
-      )}
-
       {/* SLA e Status Badge (se houver a propriedade status no chat) */}
       {(chat.status || chat.last_inbound_at) && (
         <div className="flex items-center gap-2 mb-2">

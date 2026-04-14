@@ -83,8 +83,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
               </span>
             ) : null}
             {!isIncoming && message.sent_by_operator_name ? (
-              <span className="text-[9px] font-medium tracking-tight text-zinc-400 dark:text-zinc-500/70 border-l border-zinc-100 dark:border-zinc-800/50 pl-2">
-                {message.sent_by_operator_name}
+              <span className="text-[9px] font-medium tracking-tight text-zinc-400 dark:text-zinc-500/60 border-l border-zinc-100 dark:border-zinc-800/50 pl-2 uppercase">
+                {message.sent_by_operator_name.split(' ')[0]}
               </span>
             ) : null}
           </div>
