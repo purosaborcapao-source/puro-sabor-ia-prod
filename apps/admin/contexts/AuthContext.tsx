@@ -253,10 +253,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .eq('id', userId)
         .single()
 
-      if (err) return
+      if (err) {
+        console.error('🔥 AuthContext: Erro na query fetchUserProfile:', err.message, err.details)
+        return
+      }
       setProfile(data as UserProfile)
     } catch (err) {
-      console.error('🔥 AuthContext: Erro fetchUserProfile:', err)
+      console.error('🔥 AuthContext: Exceção no fetchUserProfile:', err)
     }
   }
 

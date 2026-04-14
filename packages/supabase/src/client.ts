@@ -41,13 +41,10 @@ export function createClient(): SupabaseClient<Database> {
   return cachedClient as any
 }
 
-// Lazy proxy — importing this module never throws; the error surfaces only
-// when a Supabase method is actually called at runtime.
-export const supabase = new Proxy({} as SupabaseClient<Database>, {
-  get(_target, prop, receiver) {
-    return Reflect.get(createClient(), prop, receiver)
-  }
-})
+// Removeremos o Lazy proxy, exportaremos o createClient diretamente ou apenas o inicializaremos.
+// Para garantir a mesma interface `supabase.from()`, podemos exportar a instância real.
+// Devido ao Next.js, as enviroment vars NEXT_PUBLIC_ já estão disponíveis no load.
+export const supabase = createClient()
 
 // ============================================================================
 // ROUTE HANDLER - For API Routes (service role key)
