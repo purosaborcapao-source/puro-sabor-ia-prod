@@ -18,6 +18,7 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   product?: { name: string };
+  notes?: string;
 }
 
 interface Order {
@@ -89,6 +90,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
           order_items (
             quantity,
             unit_price,
+            notes,
             products(name)
           )
         `)
@@ -119,6 +121,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         items: (orderData as any).order_items?.map((item: any) => ({
            quantity: item.quantity,
            unit_price: item.unit_price,
+           notes: item.notes,
            product: item.products
         })) || []
       };

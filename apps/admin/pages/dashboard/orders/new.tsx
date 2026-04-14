@@ -21,6 +21,7 @@ interface FormData {
     product_id: string;
     quantity: number;
     unit_price: number;
+    notes?: string;
   }>;
 }
 
@@ -235,6 +236,7 @@ export default function NewOrderPage() {
             product_id: productId,
             quantity: delta,
             unit_price: product.price,
+            notes: '',
           });
         }
       }
@@ -261,6 +263,7 @@ export default function NewOrderPage() {
               product_id: productId,
               quantity,
               unit_price: product.price,
+              notes: '',
             });
           }
         }
@@ -341,6 +344,7 @@ export default function NewOrderPage() {
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        notes: item.notes || null,
       }));
 
       const { error: itemsError } = await supabase
@@ -627,6 +631,22 @@ export default function NewOrderPage() {
                             <p className="text-xs font-medium text-gray-500 mt-0.5">
                               R$ {product.price.toFixed(2)}
                             </p>
+                            
+                            {qty > 0 && (
+                              <input
+                                type="text"
+                                placeholder="Notas (ex: sem cebola)..."
+                                value={item?.notes || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    items: prev.items.map(i => i.product_id === product.id ? { ...i, notes: val } : i)
+                                  }));
+                                }}
+                                className="mt-2 w-full px-3 py-1 bg-white border border-blue-200 rounded text-[10px] focus:ring-1 focus:ring-blue-500 outline-none"
+                              />
+                            )}
                           </div>
                           
                           <div className="flex items-center justify-end shrink-0 w-32">

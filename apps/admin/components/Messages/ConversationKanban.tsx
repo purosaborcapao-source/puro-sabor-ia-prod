@@ -107,15 +107,6 @@ const KanbanCardItem: React.FC<{
         {card.last_message.length > 60 ? "..." : ""}
       </p>
 
-      {/* Operadora Atribuída */}
-      {(card as any).assigned_operator_name && (
-        <div className="flex items-center gap-1 mb-2">
-          <span className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
-            👤 {(card as any).assigned_operator_name}
-          </span>
-        </div>
-      )}
-
       {/* Footer do card: SLA + pagamento */}
       <div className="flex items-center gap-2 flex-wrap">
         {(card.status === "NEW" || card.status === "IN_PROGRESS") &&
@@ -139,18 +130,24 @@ const KanbanCardItem: React.FC<{
 // ─── Componente principal ─────────────────────────────────────────────────────
 
 export const ConversationKanban: React.FC = () => {
-  const [cards, setCards] = useState<KanbanCard[]>([]);
+  const [boardData, setBoardData] = useState<{
+    cards: KanbanCard[];
+    resolvedCards: KanbanCard[];
+  }>({ cards: [], resolvedCards: [] });
+  
   const [loading, setLoading] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(
     null
   );
   const [showResolved, setShowResolved] = useState(false);
-  const [resolvedCards, setResolvedCards] = useState<KanbanCard[]>([]);
   const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
+  
+  // Refs para evitar problemas de closure e permitir debounce
+  const tokensRef = useRef<{ timeout: NodeJS.Timeout | null }>({ timeout: null });
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isInitial = false) => {
     try {
-      if (cards.length === 0) setLoading(true);
+      if (isInitial) setLoading(true);
 
       const [messagesRes, convsRes, ordersRes] = await Promise.all([
         supabase
@@ -176,12 +173,8 @@ export const ConversationKanban: React.FC = () => {
       const orders = ordersRes.data || [];
 
       const convMap = new Map(convs.map((c: any) => [c.customer_id, c]));
-
-      // Mapa de pedidos com pagamento pendente por customer
-      const pendingPaymentMap = new Map<
-        string,
-        { total: number; id: string }
-      >();
+      const pendingPaymentMap = new Map<string, { total: number; id: string }>();
+      
       orders.forEach((o) => {
         if (!pendingPaymentMap.has(o.customer_id)) {
           pendingPaymentMap.set(o.customer_id, { total: o.total, id: o.id });
@@ -195,7 +188,6 @@ export const ConversationKanban: React.FC = () => {
         const cid = msg.customer_id;
         const conv = convMap.get(cid) as any;
         
-        // Pula conversas bloqueadas
         if (conv?.is_blocked) return;
 
         if (!chatMap.has(cid)) {
@@ -223,20 +215,31 @@ export const ConversationKanban: React.FC = () => {
         }
       });
 
-      const allCards = Array.from(chatMap.values());
+      const allCardsArray = Array.from(chatMap.values());
+      
+      setBoardData({
+        cards: allCardsArray.filter((c) => c.status !== "RESOLVED"),
+        resolvedCards: allCardsArray.filter((c) => c.status === "RESOLVED")
+      });
 
-      // Separa resolvidos
-      setResolvedCards(allCards.filter((c) => c.status === "RESOLVED"));
-      setCards(allCards.filter((c) => c.status !== "RESOLVED"));
     } catch (err) {
       console.error("❌ [Kanban] Erro ao carregar dados:", err);
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
-  }, [cards.length]);
+  }, []);
+
+  // Versão com debounce para chamadas do Realtime
+  const debouncedLoadData = useCallback(() => {
+    if (tokensRef.current.timeout) clearTimeout(tokensRef.current.timeout);
+    tokensRef.current.timeout = setTimeout(() => {
+      loadData(false);
+    }, 300); // 300ms de debounce
+  }, [loadData]);
 
   useEffect(() => {
-    loadData();
+    // Carregamento inicial
+    loadData(true);
 
     const handleRealtimeStatus = (status: string) => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
@@ -246,12 +249,13 @@ export const ConversationKanban: React.FC = () => {
       }
     };
 
+    // Subscriptions estáveis chamando a versão debounced
     const sub1 = supabase
       .channel("kanban:messages")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
-        loadData
+        debouncedLoadData
       )
       .subscribe(handleRealtimeStatus);
 
@@ -260,7 +264,7 @@ export const ConversationKanban: React.FC = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        loadData
+        debouncedLoadData
       )
       .subscribe(handleRealtimeStatus);
 
@@ -269,23 +273,24 @@ export const ConversationKanban: React.FC = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders" },
-        loadData
+        debouncedLoadData
       )
       .subscribe(handleRealtimeStatus);
 
     return () => {
+      if (tokensRef.current.timeout) clearTimeout(tokensRef.current.timeout);
       sub1.unsubscribe();
       sub2.unsubscribe();
       sub3.unsubscribe();
     };
-  }, []);
+  }, [loadData, debouncedLoadData]);
 
   // Distribui cards nas colunas
   const getCardsForColumn = (colId: string): KanbanCard[] => {
     if (colId === "PAYMENT_PENDING") {
-      return cards.filter((c) => c.has_pending_payment);
+      return boardData.cards.filter((c) => c.has_pending_payment);
     }
-    return cards.filter((c) => c.status === colId);
+    return boardData.cards.filter((c) => c.status === colId);
   };
 
   if (loading) {
@@ -320,7 +325,7 @@ export const ConversationKanban: React.FC = () => {
           ) : (
             <Eye className="w-3.5 h-3.5" />
           )}
-          {showResolved ? "Ocultar" : "Mostrar"} Resolvidos ({resolvedCards.length})
+          {showResolved ? "Ocultar" : "Mostrar"} Resolvidos ({boardData.resolvedCards.length})
         </button>
       </div>
 
@@ -374,11 +379,11 @@ export const ConversationKanban: React.FC = () => {
                   ✅ Resolvidos
                 </span>
                 <span className="text-xs font-bold text-zinc-400 bg-white dark:bg-zinc-800 px-2 py-0.5 rounded-full">
-                  {resolvedCards.length}
+                  {boardData.resolvedCards.length}
                 </span>
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                {resolvedCards.map((card) => (
+                {boardData.resolvedCards.map((card) => (
                   <KanbanCardItem
                     key={card.customer_id}
                     card={card}

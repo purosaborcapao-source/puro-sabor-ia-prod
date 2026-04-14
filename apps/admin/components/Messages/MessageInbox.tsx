@@ -175,9 +175,19 @@ export const MessageInbox = React.memo(function MessageInbox() {
       )
       .subscribe(handleRealtimeStatus);
 
+    const subOrders = supabase
+      .channel("orders:realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "orders" },
+        () => loadChats()
+      )
+      .subscribe(handleRealtimeStatus);
+
     return () => {
       subMessages.unsubscribe();
       subConversations.unsubscribe();
+      subOrders.unsubscribe();
     };
   }, [loadChats]);
 

@@ -51,7 +51,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
     safeLoad();
 
-    const subscription = supabase
+    const subMessages = supabase
       .channel(`messages:customer:${customerId}`)
       .on(
         "postgres_changes",
@@ -65,17 +65,28 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           if (!cancelled) loadMessages();
         }
       )
-      .subscribe((status) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          setRealtimeDisconnected(true);
-        } else if (status === "SUBSCRIBED") {
-          setRealtimeDisconnected(false);
+      .subscribe(handleRealtimeStatus);
+
+    const subConversations = supabase
+      .channel(`conversations:customer:${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        () => {
+          if (!cancelled) loadMessages();
         }
-      });
+      )
+      .subscribe(handleRealtimeStatus);
 
     return () => {
       cancelled = true;
-      subscription.unsubscribe();
+      subMessages.unsubscribe();
+      subConversations.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);

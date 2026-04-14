@@ -25,9 +25,51 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   const [convStatus, setConvStatus] = useState<"NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED" | null>(null);
 
   useEffect(() => {
-    if (customerId) {
-      loadCustomerOrders();
-    }
+    if (!customerId) return;
+
+    loadCustomerOrders();
+
+    // Listeners Realtime para Pedidos e Conversas deste cliente específico
+    const subOrders = supabase
+      .channel(`orders:panel:${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "orders",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        () => loadCustomerOrders()
+      )
+      .subscribe();
+
+    const subConversations = supabase
+      .channel(`conversations:panel:${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        (payload: any) => {
+          // Atualiza status e notas internas (apenas se não estivermos salvando)
+          if (payload.new) {
+            setConvStatus(payload.new.status);
+            // Evita sobrescrever se o usuário estiver editando notas (opcional, mas seguro)
+            // Aqui vamos apenas recarregar os dados para garantir consistência
+            loadCustomerOrders();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subOrders.unsubscribe();
+      subConversations.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
 
