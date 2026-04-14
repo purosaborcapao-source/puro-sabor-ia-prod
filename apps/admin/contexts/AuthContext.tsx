@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@atendimento-ia/supabase'
+import { useRouter } from 'next/router'
 
 interface UserProfile {
   id: string
@@ -23,12 +24,38 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const DEVICE_ID_KEY = 'puro-sabor-device-id';
+const getDeviceId = () => {
+  if (typeof window === 'undefined') return 'unknown-device';
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  }
+  return deviceId;
+};
+
+const getDeviceName = () => {
+  if (typeof window === 'undefined') return 'Unknown';
+  const ua = navigator.userAgent;
+  let browser = 'Unknown';
+  if (ua.includes('Chrome')) browser = 'Chrome';
+  else if (ua.includes('Firefox')) browser = 'Firefox';
+  else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+  else if (ua.includes('Edge')) browser = 'Edge';
+
+  const os = /Mac/.test(ua) ? 'Mac' : /Win/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : /Android/.test(ua) ? 'Android' : /iOS|iPhone|iPad/.test(ua) ? 'iOS' : 'Unknown OS';
+  
+  return `${browser} on ${os}`;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
   const supabaseClient = supabase
 
   useEffect(() => {
@@ -39,127 +66,204 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('🔐 AuthContext: Iniciando initAuth...')
 
-        // Proteção contra cliente não inicializado
         if (!supabaseClient || !supabaseClient.auth) {
-          console.warn('⚠️ AuthContext: Supabase client ou auth não disponível.')
           if (isMounted) setLoading(false)
           return
         }
 
-        // Safety timeout: se em 5 segundos não resolvermos a sessão, liberamos o loading
-        // Isso permite que o usuário use o formulário mesmo se o getSession() travar
         timeoutId = setTimeout(() => {
           if (isMounted && loading) {
-            console.warn('⚠️ AuthContext: Timeout de 5s atingido no getSession. Liberando UI...')
             setLoading(false)
           }
         }, 5000)
-
-        console.log('🔐 AuthContext: Chamando getSession()...')
         
-        // Tentar buscar sessão atual
         const { data, error: err } = await supabaseClient.auth.getSession()
         
-        // Se chegarmos aqui, cancelamos o timeout de segurança
         clearTimeout(timeoutId)
-        console.log('🔐 AuthContext: getSession() resolveu.')
 
-        if (err) {
-          console.error('🔐 AuthContext: Erro ao obter sessão:', err.message)
-        }
+        if (err) console.error('🔐 AuthContext: Erro ao obter sessão:', err.message)
 
         if (data.session) {
-          console.log('✅ AuthContext: Sessão recuperada com sucesso.')
           setSession(data.session)
           setUser(data.session.user)
-          fetchUserProfile(data.session.user.id) // Non-blocking
-        } else {
-          console.log('ℹ️ AuthContext: Nenhuma sessão ativa encontrada.')
+          fetchUserProfile(data.session.user.id)
+          validateSessionStatus(data.session.user.id)
         }
       } catch (err) {
-        console.error('🔥 AuthContext: Erro crítico durante autenticação:', err)
+        console.error('🔥 AuthContext: Erro crítico:', err)
       } finally {
-        if (isMounted) {
-          console.log('🔐 AuthContext: Finalizando initAuth (setting loading to false)')
-          setLoading(false)
-        }
+        if (isMounted) setLoading(false)
       }
     }
 
     initAuth()
 
-    console.log('🔐 AuthContext: Configurando onAuthStateChange...')
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(
       async (event: string, session: Session | null) => {
-        console.log(`🔐 AuthContext: Evento de Auth recebido: ${event}`)
-        console.log(`🔐 AuthContext: Sessão presente: ${!!session}`)
-        console.log(`🔐 AuthContext: User presente: ${!!session?.user}`)
-        
-        if (!isMounted) {
-          console.warn('🔐 AuthContext: Evento ignorado (componente desmontado).')
-          return
-        }
+        if (!isMounted) return
         
         setSession(session)
         if (session?.user) {
           setUser(session.user)
-          console.log(`🔐 AuthContext: Disparando busca de perfil para ${session.user.id}`)
           fetchUserProfile(session.user.id)
+          if (event === 'SIGNED_IN') {
+             await registerSession(session.user.id)
+          }
         } else {
           setUser(null)
           setProfile(null)
         }
         
-        // Destrava a UI imediatamente em qualquer evento
-        console.log('🔐 AuthContext: Destravando UI (loading -> false)')
         setLoading(false)
         setError(null)
       }
     )
 
     return () => {
-      console.log('🔐 AuthContext: Limpando listener e timeout...')
       isMounted = false
       if (timeoutId) clearTimeout(timeoutId)
       authListener?.subscription.unsubscribe()
     }
-  }, [])
+  }, []) // eslint-disable-line
+
+  // Sincronização multi-device via Realtime
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const deviceId = getDeviceId();
+    
+    // Heartbeat loop (every 5 min)
+    const heartbeatInterval = setInterval(async () => {
+        await supabaseClient.from('operator_sessions')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('user_id', user.id)
+          .eq('device_id', deviceId)
+    }, 5 * 60 * 1000);
+
+    const channel = supabaseClient.channel(`sessions_${user.id}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'operator_sessions',
+        filter: `user_id=eq.${user.id}` 
+      }, (payload) => {
+        // Se a minha própria sessão for desativada (is_active = false)
+        const updatedSession = payload.new as any;
+        if (updatedSession.device_id === deviceId && updatedSession.is_active === false) {
+           console.log("🔒 Sessão finalizada remotamente ou expirada");
+           forceLocalSignOut();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      supabaseClient.removeChannel(channel);
+    };
+  }, [user?.id]); // eslint-disable-line
+
+  const forceLocalSignOut = async () => {
+     await supabaseClient.auth.signOut();
+     setSession(null);
+     setUser(null);
+     setProfile(null);
+     router.push('/auth/login');
+  };
+
+  const validateSessionStatus = async (userId: string) => {
+      const deviceId = getDeviceId();
+      const { data } = await supabaseClient.from('operator_sessions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('device_id', deviceId)
+        .single();
+        
+      if (!data) {
+        // Sem sessão gravada, registra
+        await registerSession(userId);
+      } else if (data.is_active === false || new Date() > new Date(data.expires_at)) {
+        // Sessão inválida ou expirada (mais de 18 horas)
+        
+        if (data.is_active) {
+            await supabaseClient.from('operator_login_history').insert({
+                user_id: userId,
+                action: 'SESSION_EXPIRED',
+                device_id: deviceId,
+                device_name: data.device_name
+            });
+            await supabaseClient.from('operator_sessions').update({ is_active: false }).eq('id', data.id);
+        }
+        
+        forceLocalSignOut();
+      } else {
+        // Sessão válida, envia heartbeat inicial
+        await supabaseClient.from('operator_sessions')
+          .update({ last_seen_at: new Date().toISOString() })
+          .eq('id', data.id);
+      }
+  };
+
+  const registerSession = async (userId: string) => {
+    const deviceId = getDeviceId();
+    const deviceName = getDeviceName();
+    
+    // Inserir login hostory
+    await supabaseClient.from('operator_login_history').insert({
+        user_id: userId,
+        action: 'LOGIN',
+        device_id: deviceId,
+        device_name: deviceName,
+        ip_address: 'CLIENT'
+    });
+
+    // Upsert operator_sessions
+    const { data: existing } = await supabaseClient.from('operator_sessions')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('device_id', deviceId)
+        .single();
+        
+    if (existing) {
+        await supabaseClient.from('operator_sessions').update({
+            is_active: true,
+            last_seen_at: new Date().toISOString(),
+            expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+        }).eq('id', existing.id);
+    } else {
+        await supabaseClient.from('operator_sessions').insert({
+            user_id: userId,
+            device_id: deviceId,
+            device_name: deviceName,
+            is_active: true,
+            expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+        });
+    }
+  };
 
   const fetchUserProfile = async (userId: string) => {
     try {
-      console.log(`🔐 AuthContext: Buscando perfil para o usuário ${userId}...`)
       const { data, error: err } = await supabaseClient
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (err) {
-        console.error('❌ AuthContext: Erro ao buscar perfil:', err)
-        return
-      }
-
-      console.log('✅ AuthContext: Perfil carregado com sucesso:', data?.name)
+      if (err) return
       setProfile(data as UserProfile)
     } catch (err) {
-      console.error('🔥 AuthContext: Erro na função fetchUserProfile:', err)
+      console.error('🔥 AuthContext: Erro fetchUserProfile:', err)
     }
   }
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 AuthContext: Tentando signIn com password...')
       setError(null)
       const { error: err } = await supabaseClient.auth.signInWithPassword({
         email,
         password
       })
 
-      if (err) {
-        console.error('🔐 AuthContext: Erro no signInWithPassword:', err.message)
-        throw err
-      }
-      console.log('✅ AuthContext: signInWithPassword concluído com sucesso.')
+      if (err) throw err
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign in failed'
       setError(message)
@@ -170,11 +274,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setError(null)
+      
+      if (user) {
+          const deviceId = getDeviceId();
+          // Desativa todas as sessoes deste user_id (Logout multi-device)
+          await supabaseClient.from('operator_sessions')
+            .update({ is_active: false })
+            .eq('user_id', user.id);
+            
+          await supabaseClient.from('operator_login_history').insert({
+            user_id: user.id,
+            action: 'LOGOUT',
+            device_id: deviceId,
+            device_name: getDeviceName()
+          });
+      }
+
       const { error: err } = await supabaseClient.auth.signOut()
 
-      if (err) {
-        throw err
-      }
+      if (err) throw err
 
       setSession(null)
       setUser(null)

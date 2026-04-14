@@ -31,7 +31,7 @@ export default async function handler(
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
 
-  const { type, phone, message, imageUrl, audioUrl, documentUrl, fileName, caption, customerId } =
+  const { type, phone, message, imageUrl, audioUrl, documentUrl, fileName, caption, customerId, operatorId } =
     req.body as Record<string, string>;
 
   if (!phone || !type) {
@@ -108,6 +108,16 @@ export default async function handler(
       // Map API type to DB uppercase Enum
       const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
 
+      let operatorName = null;
+      if (operatorId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("id", operatorId)
+          .single();
+        if (profileData) operatorName = profileData.name;
+      }
+
       const { error: insertErr } = await supabase.from("messages").insert({
         customer_id: customerId,
         phone: normalizedPhone,
@@ -118,6 +128,8 @@ export default async function handler(
         payload: { zapi_message_id: zapiData.messageId },
         zapi_status: "SENT",
         external_id: zapiData.messageId ? `zapi:${zapiData.messageId}` : null,
+        sent_by_operator_id: operatorId || null,
+        sent_by_operator_name: operatorName,
       });
 
       if (insertErr) {

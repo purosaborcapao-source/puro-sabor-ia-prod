@@ -51,7 +51,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
           .limit(1000),
         supabase
           .from("conversations")
-          .select("customer_id, status, last_inbound_at, is_blocked")
+          .select("customer_id, status, last_inbound_at, is_blocked, profiles:assigned_operator_id(name)")
       ]);
 
       if (messagesRes.error) throw messagesRes.error;
@@ -86,6 +86,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
             direction: msg.direction,
             status: conv?.status || "RESOLVED",
             last_inbound_at: conv?.last_inbound_at,
+            assigned_operator_name: conv?.profiles?.name,
           });
         }
 

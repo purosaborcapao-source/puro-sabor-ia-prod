@@ -106,6 +106,15 @@ const KanbanCardItem: React.FC<{
         {card.last_message.length > 60 ? "..." : ""}
       </p>
 
+      {/* Operadora Atribuída */}
+      {(card as any).assigned_operator_name && (
+        <div className="flex items-center gap-1 mb-2">
+          <span className="text-[10px] text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded-md border border-zinc-200 dark:border-zinc-700">
+            👤 {(card as any).assigned_operator_name}
+          </span>
+        </div>
+      )}
+
       {/* Footer do card: SLA + pagamento */}
       <div className="flex items-center gap-2 flex-wrap">
         {(card.status === "NEW" || card.status === "IN_PROGRESS") &&
@@ -151,7 +160,7 @@ export const ConversationKanban: React.FC = () => {
           .limit(1000),
         supabase
           .from("conversations")
-          .select("customer_id, status, last_inbound_at, is_blocked"),
+          .select("customer_id, status, last_inbound_at, is_blocked, profiles:assigned_operator_id(name)"),
         supabase
           .from("orders")
           .select("customer_id, total, id, payment_status")
@@ -202,6 +211,7 @@ export const ConversationKanban: React.FC = () => {
             has_pending_payment: !!pending,
             pending_order_total: pending?.total,
             pending_order_id: pending?.id,
+            assigned_operator_name: conv?.profiles?.name,
           });
         }
 

@@ -104,19 +104,23 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         setIsBlocked((convData as any).is_blocked || false);
         
         // Auto-atribuir para Em Atendimento se for Nova
-        if ((convData as any).status === "NEW") {
-          await supabase
-            .from("conversations")
-            .update({ status: "IN_PROGRESS" })
-            .eq("customer_id", customerId);
-          setConvStatus("IN_PROGRESS");
+        if ((convData as any).status === "NEW" || !(convData as any).assigned_operator_id) {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            await supabase
+              .from("conversations")
+              .update({ status: "IN_PROGRESS", assigned_operator_id: user.id } as any)
+              .eq("customer_id", customerId);
+            setConvStatus("IN_PROGRESS");
+          }
         }
       }
 
       // Buscar mensagens
       const { data, error: messagesError } = await supabase
         .from("messages")
-        .select("id, direction, content, type, media_url, created_at, payload, is_read")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
@@ -160,9 +164,12 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     try {
       setError(null);
 
+      const { data: { user } } = await supabase.auth.getUser();
+      
       let payload: Record<string, unknown> = {
         phone: customerPhone,
         customerId,
+        operatorId: user?.id,
       };
 
       if (attachment) {

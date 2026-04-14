@@ -101,7 +101,7 @@ async function handleCreateUser(
     }
 
     // Validate role
-    const validRoles = ['ADMIN', 'GERENTE', 'PRODUTOR', 'ATENDENTE']
+    const validRoles = ['ADMIN', 'ATENDENTE']
     if (!validRoles.includes(role)) {
       return res.status(400).json({ error: `Invalid role. Must be one of: ${validRoles.join(', ')}` })
     }

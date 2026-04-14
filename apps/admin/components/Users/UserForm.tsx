@@ -11,7 +11,7 @@ const userFormSchema = z.object({
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional().or(z.literal('')),
   name: z.string().min(2, 'Nome é obrigatório'),
-  role: z.enum(['ADMIN', 'GERENTE', 'PRODUTOR', 'ATENDENTE']),
+  role: z.enum(['ADMIN', 'ATENDENTE']),
   status: z.enum(['ATIVO', 'INATIVO', 'CONGELADO']).optional()
 })
 
@@ -198,8 +198,6 @@ export function UserForm({ initialData, onSuccess, onCancel }: UserFormProps) {
           >
             <option value="">Selecione uma função</option>
             <option value="ADMIN">Admin</option>
-            <option value="GERENTE">Gerente</option>
-            <option value="PRODUTOR">Produtor</option>
             <option value="ATENDENTE">Atendente</option>
           </select>
           {errors.role && (

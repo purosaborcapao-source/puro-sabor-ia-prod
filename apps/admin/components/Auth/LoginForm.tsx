@@ -30,7 +30,7 @@ export function LoginForm() {
   // Redireciona para dashboard após login bem-sucedido e profile carregado
   useEffect(() => {
     if (loginAttempted && profile) {
-      if (profile.role === 'ADMIN' || profile.role === 'GERENTE') {
+      if (profile.role === 'ADMIN' || profile.role === 'ATENDENTE') {
         router.push('/dashboard')
       } else {
         setErrorMessage(
