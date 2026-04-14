@@ -31,6 +31,8 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [convStatus, setConvStatus] = useState<ConversationStatus | null>(null);
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const realtimeDisconnected = false;
   const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -39,11 +41,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   // Refs para controlar auto-assignment e bloquear realtime durante write
   const autoAssignDoneRef = useRef(false);
   const isAutoAssigningRef = useRef(false);
-
-  // Scroll para o final quando novas mensagens chegam
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   // Carregar mensagens — estável para sempre
   const loadMessages = useCallback(async () => {
@@ -79,13 +76,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         setIsBlocked((convData as any).is_blocked || false);
       }
 
-      // Buscar mensagens
+      // Buscar mensagens (últimas 100 apenas)
       const { data, error: messagesError } = await supabase
         .from("messages")
         .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
-        .order("id", { ascending: true });
+        .order("id", { ascending: true })
+        .limit(100);
 
       if (messagesError) {
         throw messagesError;
@@ -101,6 +99,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         }
       }
       setMessages(validMessages);
+
+      // Verificar se há MAIS mensagens além das 100 carregadas
+      const countRes = await supabase
+        .from("messages")
+        .select("id", { count: "exact" })
+        .eq("customer_id", customerId);
+
+      setHasOlderMessages((countRes.count || 0) > 100);
 
       // Marca mensagens não lidas como lidas
       const unreadIds = data
@@ -178,10 +184,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     };
   }, [customerId, loadMessages]);
 
-  // Scroll ao atualizar mensagens
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   // Auto-assignment em useEffect separado para evitar cascata
   useEffect(() => {
@@ -208,6 +210,49 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       })();
     }
   }, [convStatus, customerId]);
+
+  // Carregar mensagens mais antigas
+  const loadOlderMessages = async () => {
+    if (!messages.length || loadingOlder) return;
+
+    setLoadingOlder(true);
+    try {
+      const oldestDate = messages[0].created_at;
+      const { data: olderMessagesRaw, error } = await supabase
+        .from("messages")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
+        .eq("customer_id", customerId)
+        .lt("created_at", oldestDate)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+
+      // Type guard para filtrar erros de query
+      const olderMessages: Message[] = [];
+      if (Array.isArray(olderMessagesRaw)) {
+        for (const m of olderMessagesRaw) {
+          if (m && typeof m === 'object' && 'id' in m && 'direction' in m) {
+            olderMessages.push(m as Message);
+          }
+        }
+      }
+
+      if (olderMessages.length > 0) {
+        setMessages([...olderMessages, ...messages]);
+        // Se retornou menos de 100, não há mais mensagens antigas
+        if (olderMessages.length < 100) {
+          setHasOlderMessages(false);
+        }
+      }
+    } catch (err) {
+      console.error("❌ Erro ao carregar mensagens antigas:", err);
+      setError(err instanceof Error ? err.message : "Erro ao carregar mensagens antigas");
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   const handleSendReply = async (
     content: string,
@@ -359,6 +404,18 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
+          </div>
+        )}
+
+        {hasOlderMessages && (
+          <div className="flex justify-center mb-4">
+            <button
+              onClick={loadOlderMessages}
+              disabled={loadingOlder}
+              className="px-4 py-2 text-sm font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 border border-zinc-300 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loadingOlder ? "Carregando..." : "↑ Carregar mensagens anteriores"}
+            </button>
           </div>
         )}
 

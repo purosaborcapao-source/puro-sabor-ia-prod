@@ -5,7 +5,6 @@ import {
   Brain,
   Send,
   Paperclip,
-  Mic,
   Image as ImageIcon,
   FileText,
   Zap,
@@ -14,6 +13,7 @@ import {
   CheckCheck,
   LayoutGrid,
 } from 'lucide-react'
+import { AudioPlayer } from '../Messages/AudioPlayer'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -422,10 +422,7 @@ function MessageBubble({
         )}
 
         {message.type === 'AUDIO' && message.media_url && (
-          <div className="mb-2 flex items-center gap-2">
-            <Mic className="w-4 h-4 text-current opacity-60 shrink-0" />
-            <audio controls src={message.media_url} className="h-7 w-full" />
-          </div>
+          <AudioPlayer src={message.media_url} className="w-full" />
         )}
 
         {message.type === 'DOCUMENT' && message.media_url && (

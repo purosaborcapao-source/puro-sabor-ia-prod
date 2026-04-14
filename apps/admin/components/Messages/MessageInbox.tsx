@@ -37,6 +37,104 @@ export const MessageInbox = React.memo(function MessageInbox() {
   const hasAutoSelectedRef = useRef(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  // Função auxiliar: construir chat object a partir de mensagens + conversa
+  const buildChatObject = (
+    customerId: string,
+    messages: any[],
+    conversation: any
+  ): MessageChat | null => {
+    if (messages.length === 0) return null;
+
+    // Ordenar por created_at DESC para pegar a última mensagem
+    const sortedMessages = messages.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const latestMsg = sortedMessages[0];
+
+    // Calcular unread_count
+    let unreadCount = 0;
+    sortedMessages.forEach((msg) => {
+      if (msg.direction === "INBOUND" && msg.is_read === false) {
+        unreadCount += 1;
+      }
+    });
+
+    return {
+      customer_id: customerId,
+      phone: latestMsg.phone,
+      customer_name: latestMsg.customers?.name || "Desconhecido",
+      last_message: latestMsg.content,
+      content: latestMsg.content,
+      type: latestMsg.type || "text",
+      last_message_time: latestMsg.created_at,
+      unread_count: unreadCount,
+      direction: latestMsg.direction,
+      status: conversation?.status || "RESOLVED",
+      last_inbound_at: conversation?.last_inbound_at,
+      assigned_operator_name: conversation?.profiles?.name,
+    };
+  };
+
+  // Delta Update: atualizar apenas um chat específico (realtime optimization)
+  const updateChatDelta = useCallback(
+    async (customerId: string) => {
+      try {
+        // Buscar apenas mensagens deste customer
+        const [messagesRes, convRes] = await Promise.all([
+          supabase
+            .from("messages")
+            .select(
+              "customer_id, phone, direction, content, created_at, is_read, customers:customer_id(name)"
+            )
+            .eq("customer_id", customerId)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("conversations")
+            .select("customer_id, status, last_inbound_at, is_blocked, profiles:assigned_operator_id(name)")
+            .eq("customer_id", customerId)
+            .single(),
+        ]);
+
+        if (messagesRes.error) throw messagesRes.error;
+        // Conversa pode não existir ainda, não é erro
+
+        const messages = messagesRes.data || [];
+        const conversation = convRes.data as any;
+
+        // Se congelada, remover da lista
+        if (conversation?.is_blocked) {
+          setChats((prev) => prev.filter((c) => c.customer_id !== customerId));
+          return;
+        }
+
+        // Construir novo chat object
+        const newChat = buildChatObject(customerId, messages, conversation);
+
+        if (!newChat) {
+          // Nenhuma mensagem para este customer, remover se existia
+          setChats((prev) => prev.filter((c) => c.customer_id !== customerId));
+          return;
+        }
+
+        // Atualizar apenas este chat
+        setChats((prev) => {
+          const exists = prev.some((c) => c.customer_id === customerId);
+          if (!exists) {
+            // Novo chat: adicionar ao início
+            return [newChat, ...prev];
+          }
+          // Chat existente: atualizar
+          return prev.map((c) => (c.customer_id === customerId ? newChat : c));
+        });
+
+        console.log(`✅ [Delta] Chat ${customerId} atualizado`);
+      } catch (err) {
+        console.error(`❌ [Delta] Erro ao atualizar chat ${customerId}:`, err);
+      }
+    },
+    []
+  );
+
   // Carregar lista de chats — estável para sempre (callback não recria)
   const loadChats = useCallback(async () => {
     try {
@@ -160,11 +258,20 @@ export const MessageInbox = React.memo(function MessageInbox() {
       }
     };
 
-    // Handler com debounce para evitar cascata de reloads
-    const handleChange = () => {
+    // Handler com debounce para delta update (atualizar apenas o chat afetado)
+    const handleChange = (payload: any) => {
+      // Extrair customer_id do payload realtime
+      const customerId = payload.new?.customer_id || payload.old?.customer_id;
+
+      if (!customerId) {
+        console.warn("⚠️ [Realtime] Payload sem customer_id:", payload);
+        return;
+      }
+
       clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        loadChats();
+        console.log(`🔄 [Realtime] Mudança em ${payload.table}:`, customerId);
+        updateChatDelta(customerId);
       }, 300);
     };
 
@@ -192,7 +299,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
       clearTimeout(debounceRef.current);
       sub.unsubscribe();
     };
-  }, [loadChats]);
+  }, [loadChats, updateChatDelta]);
 
   const filteredChats = chats.filter((chat) => {
     const matchesFilter = filter === "ALL" || chat.status === filter;

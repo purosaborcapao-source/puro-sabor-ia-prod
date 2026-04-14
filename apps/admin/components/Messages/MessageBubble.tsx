@@ -1,5 +1,6 @@
 import React from "react";
 import { Mic } from "lucide-react";
+import { AudioPlayer } from "./AudioPlayer";
 
 interface Message {
   id: string;
@@ -55,11 +56,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           </div>
         ) : (message.type === "AUDIO" || message.type === "VOICE") && message.media_url ? (
           <div className="mb-2">
-            <audio
-              controls
-              src={message.media_url}
-              className="w-full max-w-[280px] h-10"
-            />
+            <AudioPlayer src={message.media_url} className="w-full max-w-[280px]" />
             {message.content && message.content !== "[Áudio]" && message.content !== "[Voice Message]" && (
               <p className="text-[14px] leading-relaxed break-words mt-2 opacity-90 whitespace-pre-wrap">{message.content}</p>
             )}
