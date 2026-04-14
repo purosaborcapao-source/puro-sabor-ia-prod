@@ -33,7 +33,8 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
 
   const loadCustomerOrders = async () => {
     try {
-
+      setSelectedOrderId(null);
+      setOrders([]);
       const { data, error } = await supabase
         .from("orders")
         .select(`
@@ -164,7 +165,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
         {activeTab === "order" ? (
           <div className="space-y-4">
             {selectedOrderId ? (
-              <OrderDetail orderId={selectedOrderId} isCompact={true} />
+              <OrderDetail key={selectedOrderId} orderId={selectedOrderId} isCompact={true} />
             ) : (
               <div className="text-center py-12">
                 <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
