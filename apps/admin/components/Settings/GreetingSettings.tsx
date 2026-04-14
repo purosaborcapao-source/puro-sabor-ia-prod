@@ -117,7 +117,7 @@ export const GreetingSettings: React.FC = () => {
         .single();
 
       if (data?.value) {
-        const loaded = data.value as BotGreetingConfig;
+        const loaded = data.value as unknown as BotGreetingConfig;
         // Merge with defaults to handle missing fields from older configs
         setConfig({
           ...defaultConfig,
@@ -140,7 +140,7 @@ export const GreetingSettings: React.FC = () => {
     try {
       await supabase
         .from("settings")
-        .upsert({ key: "bot_greeting_config", value: config as any }, { onConflict: "key" });
+        .upsert({ key: "bot_greeting_config", value: config as unknown as Record<string, unknown> }, { onConflict: "key" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
