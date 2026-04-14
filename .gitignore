@@ -41,3 +41,9 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Build Artifacts
+*.tsbuildinfo
+
+# Local Tools
+.claude/
