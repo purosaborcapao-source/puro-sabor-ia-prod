@@ -90,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.session.user)
           fetchUserProfile(data.session.user.id)
           // Temporariamente desativado para diagnóstico do travamento
-          // validateSessionStatus(data.session.user.id)
+          if (false as boolean) validateSessionStatus(data.session.user.id)
         }
       } catch (err) {
         console.error('🔥 AuthContext: Erro crítico:', err)
