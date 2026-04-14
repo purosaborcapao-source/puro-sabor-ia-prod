@@ -49,12 +49,6 @@ const getDeviceName = () => {
   return `${browser} on ${os}`;
 };
 
-// Client sem tipos restritivos do Database para tabelas extras
-const getUntypedClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-  return createClient(supabaseUrl, supabaseKey) as any;
-};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -64,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabaseClient = supabase
-  const untypedClient = getUntypedClient()
+  const untypedClient = supabaseClient as any
 
   useEffect(() => {
     let isMounted = true
@@ -181,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const validateSessionStatus = async (userId: string) => {
       const deviceId = getDeviceId();
       const { data } = await untypedClient
+        .from('operator_sessions')
         .select('*')
         .eq('user_id', userId)
         .eq('device_id', deviceId)
@@ -199,13 +194,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 device_id: deviceId,
                 device_name: data.device_name
             });
-            await untypedClient.update({ is_active: false }).eq('id', data.id);
+            await untypedClient.from('operator_sessions').update({ is_active: false }).eq('id', data.id);
         }
         
         forceLocalSignOut();
       } else {
         // Sessão válida, envia heartbeat inicial
         await untypedClient
+          .from('operator_sessions')
           .update({ last_seen_at: new Date().toISOString() })
           .eq('id', data.id);
       }
@@ -226,19 +222,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Upsert operator_sessions
     const { data: existing } = await untypedClient
+        .from('operator_sessions')
         .select('id')
         .eq('user_id', userId)
         .eq('device_id', deviceId)
         .single();
         
     if (existing) {
-        await untypedClient.update({
+        await untypedClient.from('operator_sessions').update({
             is_active: true,
             last_seen_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
         }).eq('id', existing.id);
     } else {
-        await untypedClient.insert({
+        await untypedClient.from('operator_sessions').insert({
             user_id: userId,
             device_id: deviceId,
             device_name: deviceName,
@@ -287,6 +284,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const deviceId = getDeviceId();
           // Desativa todas as sessoes deste user_id (Logout multi-device)
           await untypedClient
+            .from('operator_sessions')
             .update({ is_active: false })
             .eq('user_id', user.id);
             
