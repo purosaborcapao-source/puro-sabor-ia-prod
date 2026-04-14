@@ -45,6 +45,11 @@ export function LoginForm() {
       setIsSubmitting(true)
 
       await signIn(data.email, data.password)
+      
+      // Fusível de segurança: se após 5 segundos não redirecionar, destrava o botão
+      setTimeout(() => {
+        setIsSubmitting(false)
+      }, 5000)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Erro ao fazer login'

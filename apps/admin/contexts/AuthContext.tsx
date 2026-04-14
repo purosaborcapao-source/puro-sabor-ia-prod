@@ -89,7 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(data.session)
           setUser(data.session.user)
           fetchUserProfile(data.session.user.id)
-          validateSessionStatus(data.session.user.id)
+          // Temporariamente desativado para diagnóstico do travamento
+          // validateSessionStatus(data.session.user.id)
         }
       } catch (err) {
         console.error('🔥 AuthContext: Erro crítico:', err)
@@ -108,9 +109,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setUser(session.user)
           fetchUserProfile(session.user.id)
-          if (event === 'SIGNED_IN') {
-             await registerSession(session.user.id)
-          }
+          // if (event === 'SIGNED_IN') {
+          //   registerSession(session.user.id)
+          // }
         } else {
           setUser(null)
           setProfile(null)
