@@ -7,7 +7,6 @@ interface OrderItem {
   product_id: string
   quantity: number
   unit_price: number
-  notes?: string
   products: {
     name: string
     category: string
@@ -39,7 +38,6 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
           product_id,
           quantity,
           unit_price,
-          notes,
           products:product_id(name, category)
         `)
         .eq('order_id', orderId)
@@ -104,11 +102,6 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
               <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                 {item.products?.name}
               </h4>
-              {item.notes && (
-                <p className="text-[10px] text-gray-500 italic mt-1 bg-gray-50 dark:bg-gray-800/50 px-2 py-0.5 rounded border-l-2 border-gray-200 dark:border-gray-700">
-                  {item.notes}
-                </p>
-              )}
             </div>
           </div>
           

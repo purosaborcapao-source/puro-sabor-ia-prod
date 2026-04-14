@@ -31,7 +31,8 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [convStatus, setConvStatus] = useState<ConversationStatus | null>(null);
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
+  const realtimeDisconnected = false;
+  const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
