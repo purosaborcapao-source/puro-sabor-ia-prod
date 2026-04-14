@@ -17,7 +17,6 @@ export function LoginForm() {
   const { signIn, loading, error, profile } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [loginAttempted, setLoginAttempted] = useState(false)
 
   const {
     register,
@@ -46,7 +45,6 @@ export function LoginForm() {
       setIsSubmitting(true)
 
       await signIn(data.email, data.password)
-      setLoginAttempted(true)
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Erro ao fazer login'
