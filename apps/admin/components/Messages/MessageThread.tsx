@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { MessageReplyForm } from "./MessageReplyForm";
 import { MessageBubble } from "./MessageBubble";
@@ -36,68 +36,17 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
+  // Refs para controlar auto-assignment e bloquear realtime durante write
+  const autoAssignDoneRef = useRef(false);
+  const isAutoAssigningRef = useRef(false);
+
   // Scroll para o final quando novas mensagens chegam
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Carregar mensagens
-  useEffect(() => {
-    // Cancellation flag: prevents stale customer updates after effect cleanup
-    let cancelled = false;
-
-    const safeLoad = () => {
-      if (!cancelled) loadMessages();
-    };
-
-    safeLoad();
-
-    const subMessages = supabase
-      .channel(`messages:customer:${customerId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "messages",
-          filter: `customer_id=eq.${customerId}`,
-        },
-        () => {
-          if (!cancelled) loadMessages();
-        }
-      )
-      .subscribe(handleRealtimeStatus);
-
-    const subConversations = supabase
-      .channel(`conversations:customer:${customerId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "conversations",
-          filter: `customer_id=eq.${customerId}`,
-        },
-        () => {
-          if (!cancelled) loadMessages();
-        }
-      )
-      .subscribe(handleRealtimeStatus);
-
-    return () => {
-      cancelled = true;
-      subMessages.unsubscribe();
-      subConversations.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId]);
-
-  // Scroll ao atualizar mensagens
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const loadMessages = async () => {
+  // Carregar mensagens — estável para sempre
+  const loadMessages = useCallback(async () => {
     try {
       // Silent refresh: só mostra loading se não houver mensagens
       if (messages.length === 0) {
@@ -120,27 +69,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar status da conversa
       const { data: convData } = await supabase
         .from("conversations")
-        .select("status, last_inbound_at, is_blocked")
+        .select("status, last_inbound_at, is_blocked, assigned_operator_id")
         .eq("customer_id", customerId)
         .single();
-        
+
       if (convData) {
         setConvStatus((convData as any).status as ConversationStatus);
         setLastInboundAt((convData as any).last_inbound_at);
         setIsBlocked((convData as any).is_blocked || false);
-        
-        // Auto-atribuir para Em Atendimento se for Nova
-        if ((convData as any).status === "NEW" || !(convData as any).assigned_operator_id) {
-          const { data: { user } } = await supabase.auth.getUser();
-          
-          if (user) {
-            await supabase
-              .from("conversations")
-              .update({ status: "IN_PROGRESS", assigned_operator_id: user.id } as any)
-              .eq("customer_id", customerId);
-            setConvStatus("IN_PROGRESS");
-          }
-        }
       }
 
       // Buscar mensagens
@@ -185,7 +121,93 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [customerId]);
+
+  // Carregar mensagens e setup realtime
+  useEffect(() => {
+    // Cancellation flag: prevents stale customer updates after effect cleanup
+    let cancelled = false;
+
+    const safeLoad = () => {
+      if (!cancelled) loadMessages();
+    };
+
+    // Reset auto-assign flag quando customerId muda
+    autoAssignDoneRef.current = false;
+
+    safeLoad();
+
+    const subMessages = supabase
+      .channel(`messages:customer:${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "messages",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        () => {
+          // Bloqueia realtime durante auto-assignment para evitar cascata
+          if (!cancelled && !isAutoAssigningRef.current) loadMessages();
+        }
+      )
+      .subscribe(handleRealtimeStatus);
+
+    const subConversations = supabase
+      .channel(`conversations:customer:${customerId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "conversations",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        () => {
+          // Bloqueia realtime durante auto-assignment para evitar cascata
+          if (!cancelled && !isAutoAssigningRef.current) loadMessages();
+        }
+      )
+      .subscribe(handleRealtimeStatus);
+
+    return () => {
+      cancelled = true;
+      subMessages.unsubscribe();
+      subConversations.unsubscribe();
+    };
+  }, [customerId, loadMessages]);
+
+  // Scroll ao atualizar mensagens
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Auto-assignment em useEffect separado para evitar cascata
+  useEffect(() => {
+    if (!customerId || autoAssignDoneRef.current) return;
+
+    // Só executa após loadMessages ter carregado convStatus
+    if (convStatus === "NEW") {
+      autoAssignDoneRef.current = true;
+      isAutoAssigningRef.current = true;
+
+      (async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase
+              .from("conversations")
+              .update({ status: "IN_PROGRESS", assigned_operator_id: user.id } as any)
+              .eq("customer_id", customerId);
+            setConvStatus("IN_PROGRESS");
+          }
+        } finally {
+          isAutoAssigningRef.current = false;
+        }
+      })();
+    }
+  }, [convStatus, customerId]);
 
   const handleSendReply = async (
     content: string,

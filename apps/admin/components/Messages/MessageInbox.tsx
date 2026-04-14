@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { MessageThread } from "./MessageThread";
 import { MessageListItem } from "./MessageListItem";
@@ -33,7 +33,11 @@ export const MessageInbox = React.memo(function MessageInbox() {
   const [filter, setFilter] = useState<"ALL" | "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED">("NEW");
   const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
 
-  // Carregar lista de chats
+  // Refs para controlar auto-select e debounce realtime
+  const hasAutoSelectedRef = useRef(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Carregar lista de chats — estável para sempre (callback não recria)
   const loadChats = useCallback(async () => {
     try {
       // Silent Refresh: Só mostra loading se a lista estiver vazia
@@ -74,12 +78,12 @@ export const MessageInbox = React.memo(function MessageInbox() {
       validMessages?.forEach((msg: any) => {
         const customerId = msg.customer_id;
         const conv = convMap.get(customerId) as any;
-        
+
         // Pula se estiver congelada
         if (conv?.is_blocked) return;
 
         if (!chatMap.has(customerId)) {
-          
+
           chatMap.set(customerId, {
             customer_id: customerId,
             phone: msg.phone,
@@ -112,7 +116,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
         if (b.status === "NEW" && a.status !== "NEW") return 1;
         if (a.status === "IN_PROGRESS" && b.status !== "IN_PROGRESS") return -1;
         if (b.status === "IN_PROGRESS" && a.status !== "IN_PROGRESS") return 1;
-        
+
         // Em caso de empate de status, as que estão aguardando há mais tempo sobem
         if (a.status === "NEW" || a.status === "IN_PROGRESS") {
            const timeA = a.last_inbound_at ? new Date(a.last_inbound_at!).getTime() : 0;
@@ -129,8 +133,9 @@ export const MessageInbox = React.memo(function MessageInbox() {
       setChats(chatList);
       console.log("✅ [MessageInbox] Chats carregados:", chatList.length);
 
-      // Auto-select primeiro chat se houver
-      if (chatList.length > 0 && !selectedCustomerId) {
+      // Auto-select primeiro chat apenas uma vez (via ref)
+      if (chatList.length > 0 && !hasAutoSelectedRef.current) {
+        hasAutoSelectedRef.current = true;
         setSelectedCustomerId(chatList[0].customer_id);
       }
     } catch (err) {
@@ -141,14 +146,12 @@ export const MessageInbox = React.memo(function MessageInbox() {
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCustomerId]);
+  }, []);
 
-  // Carregar chats ao montar
+  // Carregar chats ao montar e configurar realtime
   useEffect(() => {
     loadChats();
 
-    // Realtime subscription para messages e conversations
     const handleRealtimeStatus = (status: string) => {
       if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         setRealtimeDisconnected(true);
@@ -157,37 +160,37 @@ export const MessageInbox = React.memo(function MessageInbox() {
       }
     };
 
-    const subMessages = supabase
-      .channel("messages:realtime")
+    // Handler com debounce para evitar cascata de reloads
+    const handleChange = () => {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        loadChats();
+      }, 300);
+    };
+
+    // Subscription única com 3 tables monitoradas
+    const sub = supabase
+      .channel("inbox:realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
-        () => loadChats()
+        handleChange
       )
-      .subscribe(handleRealtimeStatus);
-
-    const subConversations = supabase
-      .channel("conversations:realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conversations" },
-        () => loadChats()
+        handleChange
       )
-      .subscribe(handleRealtimeStatus);
-
-    const subOrders = supabase
-      .channel("orders:realtime")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "orders" },
-        () => loadChats()
+        handleChange
       )
       .subscribe(handleRealtimeStatus);
 
     return () => {
-      subMessages.unsubscribe();
-      subConversations.unsubscribe();
-      subOrders.unsubscribe();
+      clearTimeout(debounceRef.current);
+      sub.unsubscribe();
     };
   }, [loadChats]);
 
