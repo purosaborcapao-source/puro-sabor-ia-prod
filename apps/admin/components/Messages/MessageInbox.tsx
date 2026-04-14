@@ -11,11 +11,14 @@ interface MessageChat {
   phone: string;
   customer_name: string;
   last_message: string;
+  content: string;
+  type: string;
   last_message_time: string;
   unread_count: number;
   direction: "INBOUND" | "OUTBOUND";
   status?: "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED";
   last_inbound_at?: string | null;
+  assigned_operator_name?: string | null;
 }
 
 export const MessageInbox = React.memo(function MessageInbox() {

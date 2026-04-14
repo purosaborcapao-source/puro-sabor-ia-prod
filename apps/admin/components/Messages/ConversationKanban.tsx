@@ -22,6 +22,7 @@ interface KanbanCard {
   has_pending_payment?: boolean;
   pending_order_total?: number;
   pending_order_id?: string;
+  assigned_operator_name?: string;
 }
 
 // ─── Configuração das colunas ─────────────────────────────────────────────────
