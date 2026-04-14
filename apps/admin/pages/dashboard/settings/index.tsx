@@ -4,13 +4,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { GeneralSettings } from '@/components/Settings/GeneralSettings'
 import { PaymentSettings } from '@/components/Settings/PaymentSettings'
 import { AISettings } from '@/components/Settings/AISettings'
+import { GreetingSettings } from '@/components/Settings/GreetingSettings'
 import { useState, useEffect } from 'react'
-import { Settings, CreditCard, Bot } from 'lucide-react'
+import { Settings, CreditCard, Bot, MessageSquare } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
-  const [activeTab, setActiveTab] = useState<'general' | 'payment' | 'ai'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'payment' | 'ai' | 'greeting'>('general')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -100,12 +101,24 @@ export default function SettingsPage() {
               <Bot className="w-4 h-4" />
               IA & Chat
             </button>
+            <button
+              onClick={() => setActiveTab('greeting')}
+              className={`flex items-center gap-2 py-4 px-2 border-b-2 transition-colors font-medium text-sm ${
+                activeTab === 'greeting'
+                  ? 'border-emerald-600 text-emerald-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Saudação & Atalhos
+            </button>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
             {activeTab === 'general' && <GeneralSettings canEdit={canEdit} />}
             {activeTab === 'payment' && <PaymentSettings />}
             {activeTab === 'ai' && <AISettings />}
+            {activeTab === 'greeting' && <GreetingSettings />}
           </div>
         </main>
       </div>

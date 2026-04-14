@@ -2,6 +2,232 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 import { ZapiWebhookSchema, extractMessageContent } from "./schema.ts";
 import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
+// ─── Tipos para a configuração do bot de saudação ─────────────────────────
+interface ShortcutLocation {
+  key: "1";
+  type: "location";
+  message: string;
+  maps_url: string;
+  image_url: string;
+  tips: string;
+}
+interface ShortcutLink {
+  key: "2";
+  type: "link";
+  message: string;
+  url: string;
+  tips: string;
+}
+interface ShortcutPix {
+  key: "3";
+  type: "pix";
+  message: string;
+  pix_key: string;
+  pix_instructions: string;
+}
+type BotShortcut = ShortcutLocation | ShortcutLink | ShortcutPix;
+
+interface BotGreetingConfig {
+  enabled: boolean;
+  only_when_offline: boolean;
+  greeting_message: string;
+  shortcuts: BotShortcut[];
+}
+
+// ─── Envio de mensagem de texto via Z-API ────────────────────────────────
+async function sendZapiText(phone: string, message: string): Promise<void> {
+  const instanceId = Deno.env.get("ZAPI_INSTANCE_ID") || Deno.env.get("NEXT_PUBLIC_ZAPI_INSTANCE_ID");
+  const token = Deno.env.get("ZAPI_TOKEN") || Deno.env.get("NEXT_PUBLIC_ZAPI_TOKEN");
+  const clientToken = Deno.env.get("ZAPI_CLIENT_TOKEN") || "";
+
+  if (!instanceId || !token) {
+    console.warn("⚠️ [bot] ZAPI_INSTANCE_ID ou ZAPI_TOKEN não configurados. Mensagem não enviada.");
+    return;
+  }
+
+  const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-text`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(clientToken ? { "Client-Token": clientToken } : {}),
+    },
+    body: JSON.stringify({ phone, message }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("❌ [bot] Erro ao enviar texto via Z-API:", err);
+  } else {
+    console.log("✅ [bot] Texto enviado para", phone);
+  }
+}
+
+// ─── Envio de imagem via Z-API ────────────────────────────────────────────
+async function sendZapiImage(phone: string, imageUrl: string, caption?: string): Promise<void> {
+  const instanceId = Deno.env.get("ZAPI_INSTANCE_ID") || Deno.env.get("NEXT_PUBLIC_ZAPI_INSTANCE_ID");
+  const token = Deno.env.get("ZAPI_TOKEN") || Deno.env.get("NEXT_PUBLIC_ZAPI_TOKEN");
+  const clientToken = Deno.env.get("ZAPI_CLIENT_TOKEN") || "";
+
+  if (!instanceId || !token) return;
+
+  const url = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-image`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(clientToken ? { "Client-Token": clientToken } : {}),
+    },
+    body: JSON.stringify({ phone, image: imageUrl, caption: caption || "" }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error("❌ [bot] Erro ao enviar imagem via Z-API:", err);
+  } else {
+    console.log("✅ [bot] Imagem enviada para", phone);
+  }
+}
+
+// ─── Verifica se há operadores online ────────────────────────────────────
+async function hasOperatorOnline(supabase: ReturnType<typeof createClient>): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("operator_sessions")
+    .select("id")
+    .eq("is_active", true)
+    .gt("expires_at", new Date().toISOString())
+    .limit(1);
+
+  if (error) {
+    console.warn("⚠️ [bot] Não foi possível verificar sessões de operador:", error.message);
+    return false; // em caso de erro, assume offline para não bloquear a saudação
+  }
+
+  return (data?.length ?? 0) > 0;
+}
+
+// ─── Normaliza o texto de resposta do cliente para comparação ─────────────
+function normalizeShortcutInput(text: string): string {
+  const trimmed = text.trim().toLowerCase();
+  const map: Record<string, string> = {
+    "1": "1", "um": "1", "1️⃣": "1",
+    "2": "2", "dois": "2", "2️⃣": "2",
+    "3": "3", "três": "3", "tres": "3", "3️⃣": "3",
+  };
+  return map[trimmed] ?? "";
+}
+
+// ─── Processa e envia resposta de atalho ─────────────────────────────────
+async function handleShortcutReply(
+  phone: string,
+  shortcutKey: string,
+  shortcuts: BotShortcut[]
+): Promise<void> {
+  const shortcut = shortcuts.find((s) => s.key === shortcutKey);
+  if (!shortcut) return;
+
+  if (shortcut.type === "location") {
+    const s = shortcut as ShortcutLocation;
+    let msg = s.message;
+    if (s.maps_url) msg += `\n\n🗺️ ${s.maps_url}`;
+    if (s.tips) msg += `\n\n💡 ${s.tips}`;
+    await sendZapiText(phone, msg);
+    if (s.image_url) {
+      await sendZapiImage(phone, s.image_url, "📸 Nossa fachada");
+    }
+  } else if (shortcut.type === "link") {
+    const s = shortcut as ShortcutLink;
+    let msg = s.message;
+    if (s.url) msg += `\n\n🔗 ${s.url}`;
+    if (s.tips) msg += `\n\n${s.tips}`;
+    await sendZapiText(phone, msg);
+  } else if (shortcut.type === "pix") {
+    const s = shortcut as ShortcutPix;
+    let msg = s.message;
+    if (s.pix_key) msg += `\n\n🔑 *Chave PIX:*\n\`${s.pix_key}\``;
+    if (s.pix_instructions) msg += `\n\n${s.pix_instructions}`;
+    await sendZapiText(phone, msg);
+  }
+}
+
+// ─── Motor principal do bot de saudação ──────────────────────────────────
+async function runGreetingBot(
+  supabase: ReturnType<typeof createClient>,
+  customerId: string,
+  phone: string,
+  messageContent: string
+): Promise<void> {
+  // 1. Carregar configuração
+  const { data: settingsRow } = await supabase
+    .from("settings")
+    .select("value")
+    .eq("key", "bot_greeting_config")
+    .single();
+
+  if (!settingsRow?.value) return;
+
+  const config = settingsRow.value as BotGreetingConfig;
+  if (!config.enabled) return;
+
+  // 2. Verificar disponibilidade de operadores se necessário
+  if (config.only_when_offline) {
+    const online = await hasOperatorOnline(supabase);
+    if (online) {
+      console.log("ℹ️ [bot] Operador online — saudação automática suspensa.");
+      return;
+    }
+  }
+
+  // 3. Buscar estado da conversa
+  const { data: conversation } = await supabase
+    .from("conversations")
+    .select("id, greeting_sent_at")
+    .eq("customer_id", customerId)
+    .maybeSingle();
+
+  const greetingSentAt = conversation?.greeting_sent_at
+    ? new Date(conversation.greeting_sent_at)
+    : null;
+
+  const shortcutWindowMs = 30 * 60 * 1000; // 30 minutos
+  const isWithinShortcutWindow =
+    greetingSentAt && Date.now() - greetingSentAt.getTime() < shortcutWindowMs;
+
+  // 4. Se saudação já foi enviada e estamos dentro da janela → processar atalho
+  if (greetingSentAt && isWithinShortcutWindow) {
+    const key = normalizeShortcutInput(messageContent);
+    if (key) {
+      console.log(`🤖 [bot] Respondendo atalho "${key}" para ${phone}`);
+      await handleShortcutReply(phone, key, config.shortcuts);
+    } else {
+      console.log("ℹ️ [bot] Resposta fora dos atalhos — deixando para o operador.");
+    }
+    return;
+  }
+
+  // 5. Saudação ainda não enviada (ou expirou a janela) → enviar saudação
+  if (!greetingSentAt || !isWithinShortcutWindow) {
+    console.log(`🤖 [bot] Enviando saudação para ${phone}`);
+    await sendZapiText(phone, config.greeting_message);
+
+    // Marcar greeting_sent_at na conversa
+    if (conversation?.id) {
+      await supabase
+        .from("conversations")
+        .update({ greeting_sent_at: new Date().toISOString() })
+        .eq("id", conversation.id);
+    } else {
+      // Conversa pode não existir ainda (será criada pelo trigger) — tentar novamente via upsert
+      await supabase
+        .from("conversations")
+        .upsert(
+          { customer_id: customerId, greeting_sent_at: new Date().toISOString() },
+          { onConflict: "customer_id" }
+        );
+    }
+  }
+}
+
 // ─── Geração de hash simples para content dedup ────────────────────────────
 function simpleHash(str: string): string {
   let hash = 0;
@@ -294,6 +520,11 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
           }),
         }
       ).catch((err) => console.error("⚠️ process-message error:", err));
+
+      // 4. Bot de saudação automática (fire-and-forget)
+      runGreetingBot(supabase, activeCustomer.id, resolvedPhone, content).catch(
+        (err) => console.error("⚠️ [bot] Erro no greeting bot:", err)
+      );
     }
 
     return new Response(
