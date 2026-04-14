@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { Session, User as SupabaseUser, createClient } from '@supabase/supabase-js'
+import { Session, User as SupabaseUser } from '@supabase/supabase-js'
 import { supabase } from '@atendimento-ia/supabase'
 import { useRouter } from 'next/router'
 
