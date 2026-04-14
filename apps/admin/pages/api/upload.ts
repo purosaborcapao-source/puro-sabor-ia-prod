@@ -52,9 +52,16 @@ export default async function handler(
       return res.status(400).json({ success: false, error: "File type not allowed" });
     }
 
-    const maxSize = 50 * 1024 * 1024;
+    const { data: sizeSetting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "upload_max_size_mb")
+      .single();
+    const maxSizeMb = typeof sizeSetting?.value === "number" ? sizeSetting.value : 50;
+    const maxSize = maxSizeMb * 1024 * 1024;
+
     if (file.size > maxSize) {
-      return res.status(400).json({ success: false, error: "File too large (max 50MB)" });
+      return res.status(400).json({ success: false, error: `File too large (max ${maxSizeMb}MB)` });
     }
 
     const ext = path.extname(file.name);

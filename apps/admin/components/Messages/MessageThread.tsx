@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { MessageReplyForm } from "./MessageReplyForm";
 import { MessageBubble } from "./MessageBubble";
-import { AlertCircle, Ban, ShoppingCart } from "lucide-react";
+import { AlertCircle, Ban, ShoppingCart, WifiOff } from "lucide-react";
 import { useRouter } from "next/router";
 import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
 import { SLATimer } from "./SLATimer";
@@ -31,6 +31,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [convStatus, setConvStatus] = useState<ConversationStatus | null>(null);
   const [lastInboundAt, setLastInboundAt] = useState<string | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -41,9 +42,15 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
   // Carregar mensagens
   useEffect(() => {
-    loadMessages();
+    // Cancellation flag: prevents stale customer updates after effect cleanup
+    let cancelled = false;
 
-    // Realtime subscription
+    const safeLoad = () => {
+      if (!cancelled) loadMessages();
+    };
+
+    safeLoad();
+
     const subscription = supabase
       .channel(`messages:customer:${customerId}`)
       .on(
@@ -55,13 +62,19 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           filter: `customer_id=eq.${customerId}`,
         },
         () => {
-          console.log("📬 Nova mensagem no thread");
-          loadMessages();
+          if (!cancelled) loadMessages();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setRealtimeDisconnected(true);
+        } else if (status === "SUBSCRIBED") {
+          setRealtimeDisconnected(false);
+        }
+      });
 
     return () => {
+      cancelled = true;
       subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,6 +271,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         </div>
         
         <div className="flex items-center gap-3">
+          {realtimeDisconnected && (
+            <span
+              title="Conexão em tempo real perdida — atualizações automáticas pausadas"
+              className="flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-700 text-xs rounded-full font-semibold border border-yellow-200"
+            >
+              <WifiOff className="w-3 h-3" /> Offline
+            </span>
+          )}
           {convStatus && <ConversationStatusBadge status={convStatus} />}
           {lastInboundAt && convStatus && (
             <SLATimer status={convStatus} lastInboundAt={lastInboundAt} />

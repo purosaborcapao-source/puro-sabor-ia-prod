@@ -132,16 +132,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sincronização multi-device via Realtime
   useEffect(() => {
     if (!user?.id) return;
-    
+
     const deviceId = getDeviceId();
-    
-    // Heartbeat loop (every 5 min)
-    const heartbeatInterval = setInterval(async () => {
-        await untypedClient.from('operator_sessions')
-          .update({ last_seen_at: new Date().toISOString() })
-          .eq('user_id', user.id)
-          .eq('device_id', deviceId)
-    }, 5 * 60 * 1000);
+    let heartbeatInterval: ReturnType<typeof setInterval>;
+
+    // Ler intervalo de heartbeat da tabela settings, depois iniciar o loop
+    untypedClient
+      .from('settings')
+      .select('value')
+      .eq('key', 'heartbeat_interval_minutes')
+      .single()
+      .then(({ data }: { data: { value: unknown } | null }) => {
+        const intervalMs = (typeof data?.value === 'number' ? data.value : 5) * 60 * 1000;
+
+        heartbeatInterval = setInterval(async () => {
+          await untypedClient.from('operator_sessions')
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq('user_id', user.id)
+            .eq('device_id', deviceId);
+        }, intervalMs);
+      });
 
     const channel = supabaseClient.channel(`sessions_${user.id}`)
       .on('postgres_changes', { 
@@ -160,7 +170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
 
     return () => {
-      clearInterval(heartbeatInterval);
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
       supabaseClient.removeChannel(channel);
     };
   }, [user?.id]); // eslint-disable-line
@@ -212,8 +222,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const deviceId = getDeviceId();
       const deviceName = getDeviceName();
-      
-      // Inserir login hostory
+
+      // Ler duração da sessão da tabela settings
+      const { data: durationSetting } = await untypedClient
+        .from('settings')
+        .select('value')
+        .eq('key', 'session_duration_hours')
+        .single();
+      const sessionDurationHours = typeof durationSetting?.value === 'number'
+        ? durationSetting.value
+        : 18;
+      const expiresAt = new Date(Date.now() + sessionDurationHours * 60 * 60 * 1000).toISOString();
+
+      // Inserir login history
       await untypedClient.from('operator_login_history').insert({
           user_id: userId,
           action: 'LOGIN',
@@ -229,12 +250,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('user_id', userId)
           .eq('device_id', deviceId)
           .single();
-          
+
       if (existing) {
           await untypedClient.from('operator_sessions').update({
               is_active: true,
               last_seen_at: new Date().toISOString(),
-              expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+              expires_at: expiresAt
           }).eq('id', existing.id);
       } else {
           await untypedClient.from('operator_sessions').insert({
@@ -242,7 +263,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               device_id: deviceId,
               device_name: deviceName,
               is_active: true,
-              expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+              expires_at: expiresAt
           });
       }
     } catch (err: any) {

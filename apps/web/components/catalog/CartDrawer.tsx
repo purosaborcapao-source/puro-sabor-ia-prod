@@ -8,6 +8,7 @@ interface CartDrawerProps {
   items: CartItem[];
   onRemoveItem: (id: string) => void;
   total: number;
+  sinalValor: number;
   onCheckout: () => void;
 }
 
@@ -17,16 +18,10 @@ export function CartDrawer({
   items,
   onRemoveItem,
   total,
+  sinalValor,
   onCheckout,
 }: CartDrawerProps) {
   if (!isOpen) return null;
-
-
-
-  const targetSinal = total * 0.30;
-  const remainder = targetSinal % 50;
-  let finalSinal = remainder < 40 ? targetSinal - remainder : targetSinal - remainder + 50;
-  if (finalSinal === 0 && total > 0) finalSinal = 50;
 
   return (
     <div className="fixed inset-0 z-[110] flex justify-end animate-in fade-in duration-300">
@@ -113,7 +108,7 @@ export function CartDrawer({
               </div>
               <div className="flex justify-between items-center text-[10px] font-bold text-orange-400 uppercase tracking-widest">
                 <span>Sinal Sugerido (~30%)</span>
-                <span>{finalSinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <span>{sinalValor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
               </div>
             </div>
 

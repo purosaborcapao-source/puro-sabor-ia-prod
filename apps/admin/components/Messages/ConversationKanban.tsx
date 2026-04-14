@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { SLATimer } from "./SLATimer";
 import { ThreadModal } from "./ThreadModal";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, WifiOff } from "lucide-react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -146,6 +146,7 @@ export const ConversationKanban: React.FC = () => {
   );
   const [showResolved, setShowResolved] = useState(false);
   const [resolvedCards, setResolvedCards] = useState<KanbanCard[]>([]);
+  const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -237,6 +238,14 @@ export const ConversationKanban: React.FC = () => {
   useEffect(() => {
     loadData();
 
+    const handleRealtimeStatus = (status: string) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setRealtimeDisconnected(true);
+      } else if (status === "SUBSCRIBED") {
+        setRealtimeDisconnected(false);
+      }
+    };
+
     const sub1 = supabase
       .channel("kanban:messages")
       .on(
@@ -244,7 +253,7 @@ export const ConversationKanban: React.FC = () => {
         { event: "*", schema: "public", table: "messages" },
         loadData
       )
-      .subscribe();
+      .subscribe(handleRealtimeStatus);
 
     const sub2 = supabase
       .channel("kanban:conversations")
@@ -253,7 +262,7 @@ export const ConversationKanban: React.FC = () => {
         { event: "*", schema: "public", table: "conversations" },
         loadData
       )
-      .subscribe();
+      .subscribe(handleRealtimeStatus);
 
     const sub3 = supabase
       .channel("kanban:orders")
@@ -262,7 +271,7 @@ export const ConversationKanban: React.FC = () => {
         { event: "*", schema: "public", table: "orders" },
         loadData
       )
-      .subscribe();
+      .subscribe(handleRealtimeStatus);
 
     return () => {
       sub1.unsubscribe();
@@ -291,8 +300,16 @@ export const ConversationKanban: React.FC = () => {
     <div className="flex-1 flex flex-col min-h-0 bg-zinc-50 dark:bg-zinc-950">
       {/* Header */}
       <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        <h3 className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 flex items-center gap-2">
           Conversas — Visão Kanban
+          {realtimeDisconnected && (
+            <span
+              title="Conexão em tempo real perdida — atualizações automáticas pausadas"
+              className="flex items-center gap-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 text-[10px] rounded-full font-semibold border border-yellow-200"
+            >
+              <WifiOff className="w-3 h-3" /> Offline
+            </span>
+          )}
         </h3>
         <button
           onClick={() => setShowResolved((v) => !v)}

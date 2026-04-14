@@ -261,13 +261,13 @@ async function handleDeleteOrder(
   _req: NextApiRequest,
   res: NextApiResponse<ResponseData>,
   id: string,
-  _userId: string
+  userId: string
 ) {
   try {
-    // Check if order exists
+    // Check if order exists and is not already cancelled
     const { data: order, error: fetchError } = await supabaseServer
       .from('orders')
-      .select('id')
+      .select('id, status')
       .eq('id', id)
       .single()
 
@@ -275,19 +275,33 @@ async function handleDeleteOrder(
       return res.status(404).json({ error: 'Order not found' })
     }
 
-    // Delete order (cascade deletes order_items, payment_entries, order_changes)
-    const { error: deleteError } = await supabaseServer
+    if (order.status === 'CANCELADO') {
+      return res.status(400).json({ error: 'Order is already cancelled' })
+    }
+
+    // Soft-delete: set status to CANCELADO to preserve financial history
+    const { error: updateError } = await supabaseServer
       .from('orders')
-      .delete()
+      .update({ status: 'CANCELADO', updated_at: new Date().toISOString() })
       .eq('id', id)
 
-    if (deleteError) {
-      return res.status(500).json({ error: `Failed to delete order: ${deleteError.message}` })
+    if (updateError) {
+      return res.status(500).json({ error: `Failed to cancel order: ${updateError.message}` })
     }
+
+    // Log the cancellation
+    await supabaseServer.from('order_changes').insert({
+      order_id:   id,
+      changed_by: userId,
+      field:      'status' as any,
+      old_value:  order.status,
+      new_value:  'CANCELADO',
+      reason:     'Order cancelled'
+    })
 
     return res.status(200).json({
       success: true,
-      message: 'Order deleted successfully'
+      message: 'Order cancelled successfully'
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'

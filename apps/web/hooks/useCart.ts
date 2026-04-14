@@ -15,7 +15,7 @@ export interface CartItem {
   };
 }
 
-export function useCart() {
+export function useCart(sinalPct = 0.3) {
   const [items, setItems] = useState<CartItem[]>([]);
 
   const addItem = useCallback((product: Product, quantity: number, customizations?: CartItem['customizations']) => {
@@ -58,10 +58,15 @@ export function useCart() {
     }, 0);
   }, [items]);
 
-  // Regra de negócio: 30% de sinal
+  // Regra de negócio: sinal configurável (%), arredondado para múltiplos de R$50
+  // (preferência por arredondar para baixo; arredonda para cima só se o resto >= R$40)
   const sinalValor = useMemo(() => {
-    return total * 0.3;
-  }, [total]);
+    if (total === 0) return 0;
+    const target = total * sinalPct;
+    const remainder = target % 50;
+    const rounded = remainder < 40 ? target - remainder : target - remainder + 50;
+    return rounded === 0 ? 50 : rounded;
+  }, [total, sinalPct]);
 
   return {
     items,

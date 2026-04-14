@@ -155,7 +155,8 @@ async function runGreetingBot(
   supabase: ReturnType<typeof createClient>,
   customerId: string,
   phone: string,
-  messageContent: string
+  messageContent: string,
+  greetingWindowMs = 30 * 60 * 1000
 ): Promise<void> {
   // 1. Carregar configuração
   const { data: settingsRow } = await supabase
@@ -189,7 +190,7 @@ async function runGreetingBot(
     ? new Date(conversation.greeting_sent_at)
     : null;
 
-  const shortcutWindowMs = 30 * 60 * 1000; // 30 minutos
+  const shortcutWindowMs = greetingWindowMs;
   const isWithinShortcutWindow =
     greetingSentAt && Date.now() - greetingSentAt.getTime() < shortcutWindowMs;
 
@@ -228,22 +229,21 @@ async function runGreetingBot(
   }
 }
 
-// ─── Geração de hash simples para content dedup ────────────────────────────
-function simpleHash(str: string): string {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Converte para 32bit int
-  }
-  return Math.abs(hash).toString(36);
+// ─── Hash SHA-256 (disponível no Deno via Web Crypto API) ─────────────────
+async function computeHash(str: string): Promise<string> {
+  const data = new TextEncoder().encode(str);
+  const buffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, 32); // 128 bits — espaço de colisão 2^128 vs 2^32 anterior
 }
 
 // Fallback external_id quando Z-API não envia messageId
 // Usa phone + conteúdo + timestamp arredondado a 10s (tolerância de reentrega)
-function buildFallbackExternalId(phone: string, content: string, momment?: number): string {
+async function buildFallbackExternalId(phone: string, content: string, momment?: number): Promise<string> {
   const ts = momment ? Math.floor(momment / 10000) : Math.floor(Date.now() / 10000);
-  return `fallback:${simpleHash(`${phone}:${content}:${ts}`)}`;
+  return `fallback:${await computeHash(`${phone}:${content}:${ts}`)}`;
 }
 
 // Normaliza telefone para formato consistente (só dígitos)
@@ -353,12 +353,26 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
     // por hash de conteúdo para proteger contra reentregas sem messageId.
     const externalId = parsed.messageId
       ? `zapi:${parsed.messageId}`
-      : buildFallbackExternalId(parsed.phone, content, parsed.momment);
+      : await buildFallbackExternalId(parsed.phone, content, parsed.momment);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ─── Ler configurações operacionais da tabela settings ────────────────
+    const { data: settingsRows } = await supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", ["greeting_window_minutes", "dedup_window_seconds"]);
+
+    const settingsMap = new Map(
+      (settingsRows || []).map((r: any) => [r.key, r.value])
+    );
+    const greetingWindowMs =
+      ((settingsMap.get("greeting_window_minutes") as number) || 30) * 60 * 1000;
+    const dedupWindowMs =
+      ((settingsMap.get("dedup_window_seconds") as number) || 30) * 1000;
 
     // ─── Camada 2: Early check — ANTES de qualquer processamento ──────────
     // Evita findOrCreateCustomer, process-message e toda a lógica downstream
@@ -377,11 +391,10 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       );
     }
 
-    // ─── Camada 3: Content dedup — mesma mensagem nos últimos 30 segundos ──
+    // ─── Camada 3: Content dedup — mesma mensagem dentro da janela configurável ──
     // Protege contra retry interno da Z-API que gera um messageId diferente
     // para exatamente o mesmo conteúdo (ex: falha e reenvio automático).
-    const contentHash = simpleHash(`${normalizedPhone}:${content}:${type}`);
-    const thirtySecondsAgo = new Date(Date.now() - 30_000).toISOString();
+    const dedupWindowAgo = new Date(Date.now() - dedupWindowMs).toISOString();
     const messageType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT" | "VIDEO";
 
     const { data: contentDuplicate } = await supabase
@@ -391,12 +404,12 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       .eq("direction", direction)
       .eq("type", messageType)
       .eq("content", content)
-      .gte("created_at", thirtySecondsAgo)
+      .gte("created_at", dedupWindowAgo)
       .limit(1)
       .maybeSingle();
 
     if (contentDuplicate) {
-      console.log(`⚡ [webhook-zapi] Duplicata de conteúdo (últimos 30s): ${contentHash}`);
+      console.log(`⚡ [webhook-zapi] Duplicata de conteúdo (últimos ${dedupWindowMs / 1000}s): ${normalizedPhone}/${type}`);
       return new Response(
         JSON.stringify({ success: true, status: "duplicate_content", existing_message_id: contentDuplicate.id }),
         { status: 200, headers: { "Content-Type": "application/json" } }
@@ -522,7 +535,7 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       ).catch((err) => console.error("⚠️ process-message error:", err));
 
       // 4. Bot de saudação automática (fire-and-forget)
-      runGreetingBot(supabase, activeCustomer.id, resolvedPhone, content).catch(
+      runGreetingBot(supabase, activeCustomer.id, resolvedPhone, content, greetingWindowMs).catch(
         (err) => console.error("⚠️ [bot] Erro no greeting bot:", err)
       );
     }

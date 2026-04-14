@@ -127,70 +127,44 @@ async function handleCreateOrder(
       })
     }
 
-    // Generate order number (YYYY-MM-DD-XXXX format)
-    const now = new Date().toISOString().split('T')[0]
-    const { count } = await supabaseServer
-      .from('orders')
-      .select('*', { count: 'exact' })
-      .gte('created_at', `${now}T00:00:00`)
-
-    const orderNumber = `${now}-${String((count || 0) + 1).padStart(4, '0')}`
-
-    // Create order
-    const { data: newOrder, error: orderError } = await supabaseServer
-      .from('orders')
-      .insert({
-        number: orderNumber,
-        customer_id,
-        total: total || 0,
-        delivery_date,
-        delivery_type: delivery_type || 'RETIRADA',
-        address: address || null,
-        notes: notes || null,
-        payment_status: conta_corrente ? 'CONTA_CORRENTE' : 'SINAL_PENDENTE',
-        sinal_valor: sinal_valor || 0,
-        conta_corrente,
-        status: 'PENDENTE'
-      })
-      .select()
-      .single()
-
-    if (orderError) {
-      return res.status(500).json({ error: `Failed to create order: ${orderError.message}` })
-    }
-
-    // Insert order items if provided
-    if (items.length > 0) {
-      const orderItems = items.map((item: any) => ({
-        order_id: newOrder.id,
-        product_id: item.product_id,
-        quantity: item.quantity || 1,
-        unit_price: item.unit_price || 0,
-        customizations: item.customizations || null
-      }))
-
-      const { error: itemsError } = await supabaseServer
-        .from('order_items')
-        .insert(orderItems)
-
-      if (itemsError) {
-        return res.status(500).json({ error: `Failed to create order items: ${itemsError.message}` })
+    // Atomic creation: order + items in a single DB transaction via RPC
+    const { data: result, error: rpcError } = await supabaseServer.rpc(
+      'create_order_with_items',
+      {
+        p_customer_id:   customer_id,
+        p_delivery_date: delivery_date,
+        p_delivery_type: delivery_type || 'RETIRADA',
+        p_address:       address || null,
+        p_notes:         notes   || null,
+        p_total:         total   || 0,
+        p_sinal_valor:   sinal_valor || 0,
+        p_conta_corrente: conta_corrente,
+        p_items: items.map((item: any) => ({
+          product_id:     item.product_id,
+          quantity:       item.quantity || 1,
+          unit_price:     item.unit_price || 0,
+          customizations: item.customizations || {}
+        }))
       }
+    )
+
+    if (rpcError) {
+      return res.status(500).json({ error: `Failed to create order: ${rpcError.message}` })
     }
 
-    // Log change
+    // Log creation in audit trail
     await supabaseServer.from('order_changes').insert({
-      order_id: newOrder.id,
+      order_id:   result.id,
       changed_by: userId,
-      field: 'status' as any,
-      old_value: null,
-      new_value: 'PENDENTE',
-      reason: 'Order created'
+      field:      'status' as any,
+      old_value:  null,
+      new_value:  'PENDENTE',
+      reason:     'Order created'
     })
 
     return res.status(201).json({
       success: true,
-      data: newOrder,
+      data: result,
       message: 'Order created successfully'
     })
   } catch (error) {

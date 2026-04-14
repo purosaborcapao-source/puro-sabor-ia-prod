@@ -128,17 +128,25 @@ async function handleRegisterPayment(
       return res.status(404).json({ error: 'Order not found' })
     }
 
-    // Trava de valor excedente (mais tolerância de 1%)
-    const { data: existingPayments } = await supabaseServer
-      .from('payment_entries')
-      .select('valor')
-      .eq('order_id', order_id)
-      .eq('status', 'CONFIRMADO')
+    // Trava de valor excedente (tolerância configurável via settings)
+    const [{ data: existingPayments }, { data: toleranceSetting }] = await Promise.all([
+      supabaseServer
+        .from('payment_entries')
+        .select('valor')
+        .eq('order_id', order_id)
+        .eq('status', 'CONFIRMADO'),
+      supabaseServer
+        .from('settings')
+        .select('value')
+        .eq('key', 'payment_overpayment_tolerance_pct')
+        .single()
+    ])
 
+    const tolerance = typeof toleranceSetting?.value === 'number' ? toleranceSetting.value : 0.01
     const totalPaid = (existingPayments || []).reduce((acc, p) => acc + (p.valor || 0), 0)
     const newAmount = parseFloat(valor)
-    
-    if (totalPaid + newAmount > (order.total * 1.01)) {
+
+    if (totalPaid + newAmount > (order.total * (1 + tolerance))) {
       return res.status(400).json({ 
         error: `O valor excede o saldo devedor do pedido. Total Pago: R$ ${totalPaid}, Restante: R$ ${order.total - totalPaid}` 
       })

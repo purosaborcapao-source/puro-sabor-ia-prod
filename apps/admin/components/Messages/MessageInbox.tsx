@@ -4,7 +4,7 @@ import { MessageThread } from "./MessageThread";
 import { MessageListItem } from "./MessageListItem";
 import { OrderContextPanel } from "./OrderContextPanel";
 import { ConversationKanban } from "./ConversationKanban";
-import { AlertCircle, MessageSquare, RefreshCw, Search, LayoutList, Kanban } from "lucide-react";
+import { AlertCircle, MessageSquare, RefreshCw, Search, LayoutList, Kanban, WifiOff } from "lucide-react";
 
 interface MessageChat {
   customer_id: string;
@@ -31,6 +31,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [filter, setFilter] = useState<"ALL" | "NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED">("NEW");
+  const [realtimeDisconnected, setRealtimeDisconnected] = useState(false);
 
   // Carregar lista de chats
   const loadChats = useCallback(async () => {
@@ -148,6 +149,14 @@ export const MessageInbox = React.memo(function MessageInbox() {
     loadChats();
 
     // Realtime subscription para messages e conversations
+    const handleRealtimeStatus = (status: string) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        setRealtimeDisconnected(true);
+      } else if (status === "SUBSCRIBED") {
+        setRealtimeDisconnected(false);
+      }
+    };
+
     const subMessages = supabase
       .channel("messages:realtime")
       .on(
@@ -155,7 +164,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
         { event: "*", schema: "public", table: "messages" },
         () => loadChats()
       )
-      .subscribe();
+      .subscribe(handleRealtimeStatus);
 
     const subConversations = supabase
       .channel("conversations:realtime")
@@ -164,7 +173,7 @@ export const MessageInbox = React.memo(function MessageInbox() {
         { event: "*", schema: "public", table: "conversations" },
         () => loadChats()
       )
-      .subscribe();
+      .subscribe(handleRealtimeStatus);
 
     return () => {
       subMessages.unsubscribe();
@@ -246,6 +255,14 @@ export const MessageInbox = React.memo(function MessageInbox() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
               Mensagens
+              {realtimeDisconnected && (
+                <span
+                  title="Conexão em tempo real perdida — mensagens podem não atualizar automaticamente"
+                  className="flex items-center gap-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 text-[10px] rounded-full font-semibold border border-yellow-200"
+                >
+                  <WifiOff className="w-3 h-3" /> Offline
+                </span>
+              )}
             </h2>
             <div className="flex items-center gap-1">
               {/* Toggle: Lista / Kanban */}

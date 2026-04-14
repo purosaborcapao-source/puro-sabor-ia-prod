@@ -19,11 +19,16 @@ export const MessageReplyForm: React.FC<MessageReplyFormProps> = ({ onSend }) =>
   const [error, setError] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [maxSizeMb, setMaxSizeMb] = useState(50);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+    supabase.from("settings").select("value").eq("key", "upload_max_size_mb").single()
+      .then(({ data }) => {
+        if (typeof data?.value === "number") setMaxSizeMb(data.value);
+      });
   }, []);
 
   const handleSelectTemplate = (content: string) => {
@@ -41,8 +46,8 @@ export const MessageReplyForm: React.FC<MessageReplyFormProps> = ({ onSend }) =>
     const newAttachments: Attachment[] = [];
 
     for (const file of files) {
-      if (file.size > 50 * 1024 * 1024) {
-        setError(`Arquivo muito grande: ${file.name} (max 50MB)`);
+      if (file.size > maxSizeMb * 1024 * 1024) {
+        setError(`Arquivo muito grande: ${file.name} (max ${maxSizeMb}MB)`);
         continue;
       }
 

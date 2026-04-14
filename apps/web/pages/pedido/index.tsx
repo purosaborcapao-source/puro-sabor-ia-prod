@@ -14,15 +14,24 @@ import { useRouter } from 'next/router';
 
 export default function PedidoPage() {
   const { productsByCategory, loading } = useProducts();
-  const { items, addItem, removeItem, total, sinalValor, clearCart } = useCart();
   const router = useRouter();
 
+  const [sinalPct, setSinalPct] = useState(0.3);
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-
   const [isCheckoutMode, setIsCheckoutMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { items, addItem, removeItem, total, sinalValor, clearCart } = useCart(sinalPct);
+
+  // Carregar percentual do sinal a partir da tabela settings
+  React.useEffect(() => {
+    supabasePublic.from('settings').select('value').eq('key', 'sinal_pct').single()
+      .then(({ data }) => {
+        if (typeof data?.value === 'number') setSinalPct(data.value);
+      });
+  }, []);
 
   // Define categoria inicial após carregar
   React.useEffect(() => {
@@ -50,6 +59,13 @@ export default function PedidoPage() {
   };
 
   const submitOrderToDB = async (data: CheckoutData) => {
+    // Validate date: must not be in the past
+    const today = new Date().toISOString().split('T')[0];
+    if (data.date < today) {
+      alert('A data de retirada não pode ser no passado.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // 2. Criar Pedido (Order)
@@ -200,6 +216,7 @@ export default function PedidoPage() {
         items={items}
         onRemoveItem={removeItem}
         total={total}
+        sinalValor={sinalValor}
         onCheckout={handleGoToCheckout}
       />
 
