@@ -9,6 +9,7 @@ interface Message {
   media_url?: string;
   created_at: string | null;
   payload?: any;
+  sent_by_operator_name?: string | null;
 }
 
 interface MessageBubbleProps {
@@ -81,9 +82,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 {intent}
               </span>
             ) : null}
-            {!isIncoming && (message as any).sent_by_operator_name ? (
-              <span className="text-[10px] italic text-zinc-400 dark:text-zinc-500">
-                — {(message as any).sent_by_operator_name}
+            {!isIncoming && message.sent_by_operator_name ? (
+              <span className="text-[9px] font-medium tracking-tight text-zinc-400 dark:text-zinc-500/70 border-l border-zinc-100 dark:border-zinc-800/50 pl-2">
+                {message.sent_by_operator_name}
               </span>
             ) : null}
           </div>

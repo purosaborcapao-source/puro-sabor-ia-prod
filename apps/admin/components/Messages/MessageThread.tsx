@@ -15,6 +15,7 @@ interface Message {
   media_url?: string;
   created_at: string | null;
   payload?: any;
+  sent_by_operator_name?: string | null;
 }
 
 interface MessageThreadProps {
@@ -120,7 +121,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar mensagens
       const { data, error: messagesError } = await supabase
         .from("messages")
-        .select("id, direction, content, type, media_url, created_at, payload, is_read")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
