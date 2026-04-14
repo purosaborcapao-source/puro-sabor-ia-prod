@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Phone, Calendar, Clock, ArrowLeft, Send } from 'lucide-react';
+import { Calendar, Clock, ArrowLeft, Send } from 'lucide-react';
 
 interface CheckoutFormProps {
   total: number;

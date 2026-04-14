@@ -442,7 +442,24 @@ function MessageBubble({
 
         {/* Text content */}
         {(message.type === 'TEXT' || message.type === 'VIDEO') && (
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <>
+            <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            {message.content.match(/000201[\d\w]{40,}/) && (
+              <button
+                onClick={() => {
+                  const match = message.content.match(/000201[\d\w]{40,}/);
+                  if (match) {
+                    navigator.clipboard.writeText(match[0]);
+                  }
+                }}
+                className={`mt-2 flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest transition-all border ${isIncoming ? 'border-emerald-600/30 text-emerald-700 bg-emerald-100 hover:bg-emerald-200' : 'border-white/30 text-emerald-50 bg-emerald-800 hover:bg-emerald-900'}`}
+                style={{ borderRadius: '2px' }}
+                title="Copiar Código PIX"
+              >
+                <span className="font-bold">⎘</span> Pix Copia e Cola
+              </button>
+            )}
+          </>
         )}
         {message.type === 'IMAGE' && message.content && message.content !== '[Imagem]' && (
           <p className="mt-1 text-[10px] opacity-70 italic">{message.content}</p>

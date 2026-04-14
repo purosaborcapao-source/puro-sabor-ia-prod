@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, AlertCircle } from 'lucide-react'
+import { supabase } from '@atendimento-ia/supabase'
 
 interface RegisterPaymentModalProps {
   orderId: string
@@ -19,7 +20,7 @@ export function RegisterPaymentModal({
   const [paymentType, setPaymentType] = useState<'SINAL' | 'SALDO' | 'PARCIAL' | 'ADIANTADO' | 'ENTREGA' | 'POSTERIOR'>('SINAL')
   const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'DEBITO' | 'CREDITO' | 'DINHEIRO'>('PIX')
   const [amount, setAmount] = useState('')
-  const [notes, setNotes] = useState('')
+  const [notes, _setNotes] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,12 +49,9 @@ export function RegisterPaymentModal({
 
       setIsLoading(true)
 
-      // Buscar token do localStorage (padrão do Supabase auth-helpers)
-      const supabaseToken = localStorage.getItem('supabase-auth-token')
-      let token = ''
-      if (supabaseToken) {
-        token = JSON.parse(supabaseToken).access_token
-      }
+      // Buscar token via Supabase Client
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || ''
 
       const response = await fetch('/api/payments', {
         method: 'POST',
@@ -182,20 +180,7 @@ export function RegisterPaymentModal({
             </p>
           </div>
 
-          {/* Notas */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Notas (opcional)
-            </label>
-            <textarea
-              placeholder="Ex: Pix, Transferência, Dinheiro..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              disabled={isLoading}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            />
-          </div>
+          {/* Notas Removidas para simplificar a UI, a menos que selecionado Outro Valor (não implementado) */}
 
           {/* Erro */}
           {error && (

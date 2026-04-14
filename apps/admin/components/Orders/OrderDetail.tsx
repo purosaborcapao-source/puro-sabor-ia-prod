@@ -35,6 +35,9 @@ interface Order {
   total: number;
   notes?: string;
   created_at: string | null;
+  discount?: number;
+  discount_reason?: string;
+  delivery_fee?: number;
 }
 
 interface PaymentEntry {
@@ -62,6 +65,8 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [showMiniEscolha, setShowMiniEscolha] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [sugestedSinal, setSugestedSinal] = useState('');
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
   const canConfirmPayment = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
@@ -108,6 +113,9 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         total: orderData.total,
         notes: (orderData as any).notes || '',
         created_at: orderData.created_at,
+        discount: (orderData as any).discount || 0,
+        discount_reason: (orderData as any).discount_reason || '',
+        delivery_fee: (orderData as any).delivery_fee || 0,
         items: (orderData as any).order_items?.map((item: any) => ({
            quantity: item.quantity,
            unit_price: item.unit_price,
@@ -142,6 +150,20 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
       setError(message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateOrderField = async (field: keyof Order, value: any) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ [field]: value } as any)
+        .eq('id', orderId);
+      
+      if (error) throw error;
+      setRefreshKey(prev => prev + 1);
+    } catch (err: any) {
+      alert('Erro ao atualizar campo: ' + err.message);
     }
   };
 
@@ -198,16 +220,23 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         `• ${item.quantity}x ${item.product?.name} (R$ ${(item.quantity * item.unit_price).toFixed(2)})`
       ).join('\n') || '';
 
+      const deliveryDt = order.delivery_date ? new Date(order.delivery_date) : null;
+      const deliveryFormatted = deliveryDt
+        ? `${deliveryDt.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} às ${deliveryDt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h`
+        : '';
+
+      const totalFinal = (order.total || 0) + (order.delivery_fee || 0) - (order.discount || 0);
+
       const text = `🎉 *Pedido #${order.number.slice(-4)} Confirmado!*
 Olá ${order.customer_name}! Seu pedido foi recebido e está confirmado para produção com muito carinho.
 
 *📄 Resumo dos Itens:*
 ${itemsList}
 
-💰 *Valor Total do Pedido:* R$ ${order.total.toFixed(2)}
+💰 *Valor Total do Pedido:* R$ ${totalFinal.toFixed(2)}
 🔸 *Sinal Sugerido:* R$ ${sugestedDownPayment.toFixed(2)} (para confirmar a data/produção)
-📍 *Tipo de Cesta:* ${order.delivery_type === 'ENTREGA' ? 'Entrega' : 'Retirada'}
-${order.delivery_date ? `📅 *Data:* ${new Date(order.delivery_date).toLocaleDateString('pt-BR')}` : ''}
+📍 *Tipo:* ${order.delivery_type === 'ENTREGA' ? 'Entrega' : 'Retirada'}
+${deliveryFormatted ? `📅 *Data e Hora:* ${deliveryFormatted}` : ''}
 
 ⬇️ *PAGAMENTO DO SINAL* ⬇️
 Você pode usar a aba "PIX Copia e Cola" no seu banco usando o código longo abaixo, ou escanear a imagem do QR Code que estou te enviando! O valor fica sugerido, mas como combinamos, não é travado. 😉
@@ -243,6 +272,12 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
           customerId: order.customer_id 
         }),
       });
+
+      // 3. Atualizar Status da Conversa no CRM
+      await supabase
+        .from('conversations')
+        .update({ status: 'WAITING_ORDER' })
+        .eq('customer_id', order.customer_id);
 
       const dataImage = await resImage.json();
       if (!dataImage.success) console.warn("Erro ao enviar imagem do QRCode", dataImage.error); // Continua mesmo se falhar a imagem
@@ -344,7 +379,13 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Data de Entrega</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('pt-BR') : 'N/A'} - {order.delivery_type}
+                    {order.delivery_date
+                      ? (() => {
+                          const dt = new Date(order.delivery_date);
+                          return `${dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit' })} às ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h`;
+                        })()
+                      : 'N/A'}{' '}
+                    — {order.delivery_type}
                   </p>
                 </div>
                 <div>
@@ -358,24 +399,10 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                   </span>
                   {order.status === 'PENDENTE' && (
                     <button
-                      onClick={async () => {
+                      onClick={() => {
                         const sugValue = (order.total * 0.3).toFixed(2);
-                        const userValue = prompt(`Confirma a produção do pedido?\n\nQual é o valor sugerido do sinal? (Será enviado ao cliente com uma chave PIX "em aberto")`, sugValue);
-                        if (userValue === null) return;
-                        
-                        try {
-                          const { error } = await supabase
-                            .from('orders')
-                            .update({ status: 'CONFIRMADO' })
-                            .eq('id', orderId);
-                          if (error) throw error;
-
-                          // Auto-envia após a confirmação
-                          await handleSendSummaryToWhatsApp(parseFloat(userValue), true);
-                          setRefreshKey(k => k + 1);
-                        } catch (err: any) {
-                          alert('Erro: ' + err.message);
-                        }
+                        setSugestedSinal(sugValue);
+                        setShowConfirmModal(true);
                       }}
                       className="ml-2 px-3 py-1.5 bg-blue-600 shadow-sm text-white rounded text-xs font-bold hover:bg-blue-700 transition"
                     >
@@ -383,14 +410,15 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     </button>
                   )}
                 </div>
-                {order.notes && (
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Notas / Horário</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white whitespace-pre-wrap bg-gray-50 p-2 rounded border border-gray-100">
-                      {order.notes}
-                    </p>
-                  </div>
-                )}
+                {/* Notes Edit */}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <FieldWithPermission
+                    label="Notas / Resumo Visível"
+                    value={order.notes || ''}
+                    canEdit={canEditFinancial} // reusando nível de acesso
+                    onEdit={(val) => handleUpdateOrderField('notes', val)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -400,12 +428,47 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
               </h3>
               <div className="space-y-3">
                 <FieldWithPermission
-                  label="Valor Total"
+                  label="Valor Inicial dos Itens"
                   value={order.total}
                   variant="currency"
                   canEdit={canEditFinancial}
                   disabled={order.status === 'ENTREGUE'}
+                  onEdit={(val) => handleUpdateOrderField('total', val)}
                 />
+                
+                <FieldWithPermission
+                  label="Taxa de Entrega / Acréscimos"
+                  value={order.delivery_fee || 0}
+                  variant="currency"
+                  canEdit={canEditFinancial}
+                  disabled={order.status === 'ENTREGUE'}
+                  onEdit={(val) => handleUpdateOrderField('delivery_fee', val)}
+                />
+                
+                <FieldWithPermission
+                  label="Desconto Aplicado"
+                  value={order.discount || 0}
+                  variant="currency"
+                  canEdit={canEditFinancial}
+                  disabled={order.status === 'ENTREGUE'}
+                  onEdit={(val) => handleUpdateOrderField('discount', val)}
+                />
+
+                <FieldWithPermission
+                  label="Motivo do Desconto"
+                  value={order.discount_reason || ''}
+                  canEdit={canEditFinancial}
+                  disabled={order.status === 'ENTREGUE'}
+                  onEdit={(val) => handleUpdateOrderField('discount_reason', val)}
+                />
+
+                <div className="p-3 bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-lg mt-4 flex justify-between">
+                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">TOTAL FINAL PEDIDO:</span>
+                  <span className="text-sm font-black text-gray-900 dark:text-white">
+                    {((order.total || 0) + (order.delivery_fee || 0) - (order.discount || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total Recebido</p>
                   <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
@@ -415,7 +478,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                 <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Saldo Devido</p>
                   <p className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                    {saldoDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {Math.max(0, ((order.total || 0) + (order.delivery_fee || 0) - (order.discount || 0)) - totalConfirmed).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                 </div>
               </div>
@@ -599,6 +662,56 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
         onClose={() => setIsCatalogOpen(false)} 
         onAddItem={addItemToOrder}
       />
+
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Confirma a produção?</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Qual o valor sugerido do sinal a ser cobrado? (Será enviado no resumo com chave copiável do PIX e QR Code).
+            </p>
+            <div className="relative mb-6">
+              <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
+              <input
+                type="text"
+                autoFocus
+                value={sugestedSinal}
+                onChange={(e) => setSugestedSinal(e.target.value.replace(/[^0-9,.]/g, ''))}
+                className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    setShowConfirmModal(false);
+                    const { error } = await supabase
+                      .from('orders')
+                      .update({ status: 'CONFIRMADO' })
+                      .eq('id', orderId);
+                    if (error) throw error;
+                    // Format comma to dot if user typed it
+                    const valParsed = parseFloat(sugestedSinal.replace(',', '.'));
+                    await handleSendSummaryToWhatsApp(valParsed || 0, true);
+                    setRefreshKey(k => k + 1);
+                  } catch (err: any) {
+                    alert('Erro: ' + err.message);
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,151 +1,68 @@
-import React, { useEffect, useState } from 'react';
-import { AlertCircle, CheckCircle, Clock } from 'lucide-react';
-import { useDeliverySlots } from '@/hooks/useDeliverySlots';
+import React from 'react';
+import { Calendar } from 'lucide-react';
 
 interface DeliveryDateSelectorProps {
-  value: string;
+  value: string; // ISO datetime string (datetime-local format: YYYY-MM-DDTHH:mm)
   onChange: (date: string) => void;
   error?: string;
 }
 
-export function DeliveryDateSelector({
-  value,
-  onChange,
-  error,
-}: DeliveryDateSelectorProps) {
-  const { validateDeliveryDate, getAvailableDates, loading } =
-    useDeliverySlots();
-  const [validation, setValidation] = useState<{
-    isAvailable: boolean;
-    message: string;
-  } | null>(null);
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
-
-  // Fetch available dates on mount
-  useEffect(() => {
-    const fetchAvailable = async () => {
-      const dates = await getAvailableDates();
-      setAvailableDates(dates);
-    };
-    fetchAvailable();
-  }, [getAvailableDates]);
-
-  // Validate selected date
-  useEffect(() => {
-    if (!value) {
-      setValidation(null);
-      return;
-    }
-
-    const validateDate = async () => {
-      const result = await validateDeliveryDate(value);
-      setValidation(result);
-    };
-
-    validateDate();
-  }, [value, validateDeliveryDate]);
-
-  const isToday = (dateStr: string) => {
-    const today = new Date();
-    const selected = new Date(dateStr);
-    return (
-      today.getDate() === selected.getDate() &&
-      today.getMonth() === selected.getMonth() &&
-      today.getFullYear() === selected.getFullYear()
-    );
-  };
-
-  const isTomorrow = (dateStr: string) => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const selected = new Date(dateStr);
-    return (
-      tomorrow.getDate() === selected.getDate() &&
-      tomorrow.getMonth() === selected.getMonth() &&
-      tomorrow.getFullYear() === selected.getFullYear()
-    );
-  };
-
-  const formatDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr);
-    let prefix = '';
-
-    if (isToday(dateStr)) {
-      prefix = 'Hoje - ';
-    } else if (isTomorrow(dateStr)) {
-      prefix = 'Amanhã - ';
-    }
-
-    return (
-      prefix +
-      date.toLocaleDateString('pt-BR', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-      })
-    );
-  };
+/**
+ * Seletor de data e hora para entrega/retirada.
+ * Sem slots — operadora define livremente a data e hora.
+ * Mínimo: 1 hora a partir de agora (apenas UI, sem validação de capacidade).
+ */
+export function DeliveryDateSelector({ value, onChange, error }: DeliveryDateSelectorProps) {
+  // Mínimo: agora + 1h, arredondado para próxima hora cheia
+  const minDatetime = (() => {
+    const d = new Date();
+    d.setHours(d.getHours() + 1, 0, 0, 0);
+    // Formato esperado pelo input datetime-local: YYYY-MM-DDTHH:mm
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  })();
 
   return (
-    <div className="space-y-3">
-      <label className="block">
-        <span className="text-sm font-medium text-gray-700 mb-2 block">
-          Data de Entrega
-        </span>
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={loading}
-          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 ${
-            error || (validation && !validation.isAvailable)
-              ? 'border-red-300'
-              : 'border-gray-300'
-          }`}
-        >
-          <option value="">Selecione uma data</option>
-          {availableDates.map((date) => (
-            <option key={date} value={date}>
-              {formatDateLabel(date)}
-            </option>
-          ))}
-        </select>
+    <div className="space-y-2">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        Data e Hora de Entrega / Retirada
       </label>
 
-      {/* Validation Message */}
-      {validation && (
-        <div
-          className={`flex items-start gap-3 p-3 rounded-lg ${
-            validation.isAvailable
-              ? 'bg-green-50 border border-green-200'
-              : 'bg-red-50 border border-red-200'
-          }`}
-        >
-          {validation.isAvailable ? (
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-          )}
-          <p
-            className={
-              validation.isAvailable
-                ? 'text-green-700 text-sm'
-                : 'text-red-700 text-sm'
-            }
-          >
-            {validation.message}
-          </p>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <Calendar className="w-4 h-4 text-gray-400" />
         </div>
-      )}
-
-      {/* Info */}
-      <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-700">
-          Prazo mínimo de 48 horas a partir de agora
-        </p>
+        <input
+          type="datetime-local"
+          value={value}
+          min={minDatetime}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full pl-10 pr-4 py-3 bg-gray-50 border rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all outline-none ${
+            error
+              ? 'border-red-300 focus:border-red-500'
+              : 'border-gray-200 focus:border-blue-500'
+          }`}
+        />
       </div>
 
+      {value && (
+        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+          ✅ {new Date(value).toLocaleString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </p>
+      )}
+
       {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+
+      <p className="text-xs text-gray-400">
+        Defina a data e hora conforme combinado com a cliente.
+      </p>
     </div>
   );
 }

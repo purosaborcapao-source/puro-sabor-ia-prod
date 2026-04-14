@@ -1,8 +1,6 @@
 import React from 'react';
-import { X, Trash2, ShoppingBag, MessageCircle } from 'lucide-react';
+import { X, Trash2, ShoppingBag } from 'lucide-react';
 import { CartItem } from '../../hooks/useCart';
-
-const WHATSAPP_NUMBER = '5551999056903';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -11,46 +9,6 @@ interface CartDrawerProps {
   onRemoveItem: (id: string) => void;
   total: number;
   onCheckout: () => void;
-}
-
-function buildWhatsAppMessage(items: CartItem[], total: number, date: string, time: string): string {
-  const lines = items.map((item) => {
-    const qty =
-      item.sale_unit === 'KG'
-        ? item.quantity < 1000
-          ? `${item.quantity}g`
-          : `${item.quantity / 1000}kg`
-        : `${item.quantity}x`;
-    const flavor = item.customizations?.flavor ? ` (${item.customizations.flavor})` : '';
-    const notes = item.customizations?.notes ? ` - ${item.customizations.notes}` : '';
-    // Adicionamos o productId de forma discreta para facilitar o processamento automático
-    const shortId = item.productId.split('-')[0];
-    return `• ${qty} ${item.name}${flavor}${notes} [#${shortId}]`;
-  });
-
-  const targetSinal = total * 0.30;
-  const remainder = targetSinal % 50;
-  let finalSinal = remainder < 40 ? targetSinal - remainder : targetSinal - remainder + 50;
-  if (finalSinal === 0 && total > 0) finalSinal = 50;
-
-  const totalFormatted = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const sinalFormatted = finalSinal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  
-  let dateFormatted = date;
-  if (date.includes('-')) {
-    const [year, month, day] = date.split('-');
-    dateFormatted = `${day}/${month}/${year}`;
-  }
-
-  return (
-    `Olá! Gostaria de fazer um pedido:\n\n` +
-    `📅 Data da Encomenda: ${dateFormatted}\n` +
-    `⏰ Horário: ${time}\n\n` +
-    lines.join('\n') +
-    `\n\nTotal: ${totalFormatted}\n` +
-    `Sinal sugerido (~30%): ${sinalFormatted}\n\n` +
-    `Aguardo confirmação! 🍰`
-  );
 }
 
 export function CartDrawer({

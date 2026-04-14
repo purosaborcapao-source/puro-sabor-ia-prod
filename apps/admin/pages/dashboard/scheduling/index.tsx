@@ -1,417 +1,243 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Package } from 'lucide-react';
 import { supabase } from '@atendimento-ia/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import { Tables } from '@atendimento-ia/supabase';
 
-type DeliverySlot = Tables<'delivery_slots'>;
-
-interface SlotWithCount extends DeliverySlot {
-  ordersCount: number;
-  capacity: number;
+interface OrderEntry {
+  id: string;
+  number: string;
+  delivery_date: string;
+  status: string;
+  total: number;
+  customer_name: string;
 }
 
+/** Página de agenda — visualiza pedidos por mês/dia. Sem slots de capacidade. */
 export default function SchedulingPage() {
-  const { profile } = useAuth();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [slots, setSlots] = useState<SlotWithCount[]>([]);
-  const [, setLoading] = useState(true);
-  const [selectedSlot, setSelectedSlot] = useState<SlotWithCount | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [blockReason, setBlockReason] = useState('');
+  const [orders, setOrders] = useState<OrderEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
-  const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
-
-  // Fetch slots for the month
-  const fetchSlots = async () => {
+  const fetchOrders = async () => {
     setLoading(true);
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59);
 
-      const { data: slotsData, error: slotsError } = await supabase
-        .from('delivery_slots')
-        .select('*')
-        .gte('date', startDate.toISOString().split('T')[0])
-        .lte('date', endDate.toISOString().split('T')[0])
-        .order('date');
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id, number, delivery_date, status, total,
+          customers:customer_id(name)
+        `)
+        .gte('delivery_date', startDate.toISOString())
+        .lte('delivery_date', endDate.toISOString())
+        .neq('status', 'CANCELADO')
+        .order('delivery_date');
 
-      if (slotsError) throw slotsError;
+      if (error) throw error;
 
-      // Get order counts for each slot
-      const slotsWithCounts = await Promise.all(
-        (slotsData || []).map(async (slot) => {
-          const { count } = await supabase
-            .from('orders')
-            .select('id', { count: 'exact' })
-            .eq('delivery_date', slot.date)
-            .neq('status', 'CANCELADO');
-
-          return {
-            ...slot,
-            ordersCount: count || 0,
-            capacity: slot.max_orders - (count || 0),
-          };
-        })
+      setOrders(
+        (data || []).map((o: any) => ({
+          id: o.id,
+          number: o.number,
+          delivery_date: o.delivery_date,
+          status: o.status,
+          total: o.total,
+          customer_name: o.customers?.name || 'Desconhecido',
+        }))
       );
-
-      setSlots(slotsWithCounts);
     } catch (error) {
-      console.error('Erro ao buscar slots:', error);
+      console.error('Erro ao buscar pedidos:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSlots();
+    fetchOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
 
-  const handleBlockSlot = async () => {
-    if (!selectedSlot) return;
+  const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
+  const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
 
-    try {
-      const { error } = await supabase
-        .from('delivery_slots')
-        .update({
-          blocked: true,
-          blocked_reason: blockReason || 'Bloqueado',
-        })
-        .eq('id', selectedSlot.id);
+  const monthName = currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
 
-      if (error) throw error;
+  const getOrdersForDay = (day: number) =>
+    orders.filter((o) => {
+      const d = new Date(o.delivery_date);
+      return (
+        d.getFullYear() === currentDate.getFullYear() &&
+        d.getMonth() === currentDate.getMonth() &&
+        d.getDate() === day
+      );
+    });
 
-      setBlockReason('');
-      setShowModal(false);
-      await fetchSlots();
-    } catch (error) {
-      console.error('Erro ao bloquear slot:', error);
-    }
-  };
+  const selectedDayOrders = selectedDay ? getOrdersForDay(selectedDay) : [];
 
-  const handleUnblockSlot = async () => {
-    if (!selectedSlot) return;
-
-    try {
-      const { error } = await supabase
-        .from('delivery_slots')
-        .update({
-          blocked: false,
-          blocked_reason: null,
-        })
-        .eq('id', selectedSlot.id);
-
-      if (error) throw error;
-
-      setShowModal(false);
-      await fetchSlots();
-    } catch (error) {
-      console.error('Erro ao desbloquear slot:', error);
-    }
-  };
-
-  const handleUpdateCapacity = async (newMax: number) => {
-    if (!selectedSlot) return;
-
-    try {
-      const { error } = await supabase
-        .from('delivery_slots')
-        .update({ max_orders: newMax })
-        .eq('id', selectedSlot.id);
-
-      if (error) throw error;
-
-      await fetchSlots();
-    } catch (error) {
-      console.error('Erro ao atualizar capacidade:', error);
-    }
-  };
-
-  const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
-
-  const monthName = currentDate.toLocaleString('pt-BR', {
-    month: 'long',
-    year: 'numeric',
-  });
-
-  const daysInMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth() + 1,
-    0
-  ).getDate();
-
-  const firstDayOfMonth = new Date(
-    currentDate.getFullYear(),
-    currentDate.getMonth(),
-    1
-  ).getDay();
-
-  const getDaySlot = (day: number): SlotWithCount | null => {
-    const dateStr = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    )
-      .toISOString()
-      .split('T')[0];
-
-    return slots.find((s) => s.date === dateStr) || null;
-  };
-
-  const getStatusColor = (slot: SlotWithCount | null, day: number) => {
-    if (!slot || day === 0) return 'bg-gray-50';
-    if (slot.blocked) return 'bg-red-100';
-    if (slot.capacity === 0) return 'bg-yellow-100';
-    return 'bg-green-100';
-  };
-
-  const getStatusIcon = (slot: SlotWithCount | null) => {
-    if (!slot) return null;
-    if (slot.blocked) return '🚫';
-    if (slot.capacity === 0) return '⚠️';
-    return '✅';
+  const statusColors: Record<string, string> = {
+    PENDENTE: 'bg-yellow-100 text-yellow-800',
+    CONFIRMADO: 'bg-blue-100 text-blue-800',
+    PRODUCAO: 'bg-purple-100 text-purple-800',
+    PRONTO: 'bg-teal-100 text-teal-800',
+    ENTREGUE: 'bg-green-100 text-green-800',
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            📅 Agendamento de Entregas
-          </h1>
-          <p className="text-gray-600">
-            Gerencie a disponibilidade de datas para entrega
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">📅 Agenda de Pedidos</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Visualize os pedidos por data — sem limite de capacidade.</p>
+          </div>
+          <Link
+            href="/dashboard/orders/new"
+            className="px-4 py-2 bg-black text-white text-sm font-bold rounded-xl hover:bg-gray-800 transition"
+          >
+            + Novo Pedido
+          </Link>
         </div>
 
         {/* Calendar Controls */}
-        <div className="flex items-center justify-between mb-6 bg-white rounded-lg p-4 shadow">
-          <button
-            onClick={prevMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
+        <div className="flex items-center justify-between bg-white rounded-xl px-6 py-4 shadow-sm border border-gray-100">
+          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h2 className="text-xl font-semibold capitalize">{monthName}</h2>
-          <button
-            onClick={nextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
+          <h2 className="text-lg font-bold capitalize text-gray-900">{monthName}</h2>
+          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 rounded-lg transition">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
         {/* Calendar Grid */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {/* Day Headers */}
-          <div className="grid grid-cols-7 gap-0 border-b">
-            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'].map((day) => (
-              <div
-                key={day}
-                className="p-4 text-center font-semibold text-gray-700 bg-gray-100"
-              >
-                {day}
+          <div className="grid grid-cols-7 border-b border-gray-100">
+            {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((d) => (
+              <div key={d} className="py-3 text-center text-xs font-black uppercase tracking-widest text-gray-400">
+                {d}
               </div>
             ))}
           </div>
 
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-0">
+          {/* Days */}
+          <div className="grid grid-cols-7">
             {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-32 bg-gray-50"></div>
+              <div key={`empty-${i}`} className="min-h-24 bg-gray-50/50" />
             ))}
 
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
-              const slot = getDaySlot(day);
-              const bgColor = getStatusColor(slot, day);
-              const icon = getStatusIcon(slot);
+              const dayOrders = loading ? [] : getOrdersForDay(day);
+              const isToday =
+                new Date().getFullYear() === currentDate.getFullYear() &&
+                new Date().getMonth() === currentDate.getMonth() &&
+                new Date().getDate() === day;
+              const isSelected = selectedDay === day;
 
               return (
                 <div
                   key={day}
-                  onClick={() => {
-                    if (slot) {
-                      setSelectedSlot(slot);
-                      setShowModal(true);
-                    }
-                  }}
-                  className={`min-h-32 p-3 border border-gray-200 cursor-pointer hover:shadow-md transition ${bgColor} ${
-                    slot ? 'hover:bg-opacity-75' : ''
+                  onClick={() => setSelectedDay(isSelected ? null : day)}
+                  className={`min-h-24 p-2.5 border-t border-l border-gray-100 cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-blue-50 ring-2 ring-inset ring-blue-400'
+                      : dayOrders.length > 0
+                      ? 'bg-emerald-50/40 hover:bg-emerald-50'
+                      : 'hover:bg-gray-50'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-bold text-gray-900">{day}</span>
-                    {icon && <span className="text-lg">{icon}</span>}
+                  <div className="flex items-start justify-between mb-1.5">
+                    <span
+                      className={`text-sm font-bold w-6 h-6 flex items-center justify-center rounded-full ${
+                        isToday
+                          ? 'bg-black text-white'
+                          : 'text-gray-900'
+                      }`}
+                    >
+                      {day}
+                    </span>
+                    {dayOrders.length > 0 && (
+                      <span className="text-[10px] font-black text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">
+                        {dayOrders.length}
+                      </span>
+                    )}
                   </div>
-
-                  {slot && (
-                    <div className="text-sm">
-                      {slot.blocked ? (
-                        <div className="text-red-700 font-semibold flex items-center gap-1">
-                          <Lock className="w-4 h-4" />
-                          Bloqueado
-                        </div>
-                      ) : (
-                        <>
-                          <div className="text-gray-700 font-semibold">
-                            {slot.ordersCount}/{slot.max_orders}
-                          </div>
-                          <div className="text-gray-500 text-xs">
-                            {slot.capacity} slots
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-0.5">
+                    {dayOrders.slice(0, 2).map((o) => (
+                      <p key={o.id} className="text-[9px] font-semibold text-gray-600 truncate leading-tight">
+                        {new Date(o.delivery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h {o.customer_name.split(' ')[0]}
+                      </p>
+                    ))}
+                    {dayOrders.length > 2 && (
+                      <p className="text-[9px] text-gray-400 font-bold">+{dayOrders.length - 2} mais</p>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-            <div className="w-6 h-6 bg-green-100 rounded"></div>
-            <div>
-              <div className="font-semibold text-gray-900">Disponível</div>
-              <div className="text-sm text-gray-600">Há slots disponíveis</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-            <div className="w-6 h-6 bg-yellow-100 rounded"></div>
-            <div>
-              <div className="font-semibold text-gray-900">Cheio</div>
-              <div className="text-sm text-gray-600">Capacidade atingida</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 bg-white p-4 rounded-lg shadow">
-            <div className="w-6 h-6 bg-red-100 rounded"></div>
-            <div>
-              <div className="font-semibold text-gray-900">Bloqueado</div>
-              <div className="text-sm text-gray-600">Data indisponível</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Modal */}
-      {showModal && selectedSlot && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-lg">
-            <h3 className="text-xl font-bold mb-4 text-gray-900">
-              {new Date(selectedSlot.date).toLocaleDateString('pt-BR', {
+        {/* Detail Panel */}
+        {selectedDay && (
+          <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-6">
+            <h3 className="text-sm font-black uppercase tracking-widest text-gray-500 mb-4">
+              {new Date(currentDate.getFullYear(), currentDate.getMonth(), selectedDay).toLocaleDateString('pt-BR', {
                 weekday: 'long',
-                year: 'numeric',
-                month: 'long',
                 day: 'numeric',
+                month: 'long',
               })}
+              {' '}— {selectedDayOrders.length} pedido{selectedDayOrders.length !== 1 ? 's' : ''}
             </h3>
 
-            {selectedSlot.blocked ? (
-              <div className="mb-4">
-                <div className="bg-red-50 p-3 rounded-lg mb-4">
-                  <p className="text-red-700 font-semibold flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    {selectedSlot.blocked_reason || 'Bloqueado'}
-                  </p>
-                </div>
-
-                {isAdmin && (
-                  <button
-                    onClick={handleUnblockSlot}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 rounded-lg transition"
-                  >
-                    Desbloquear Data
-                  </button>
-                )}
+            {selectedDayOrders.length === 0 ? (
+              <div className="flex items-center gap-3 text-gray-400 py-4">
+                <Package className="w-5 h-5" />
+                <p className="text-sm">Nenhum pedido para este dia.</p>
               </div>
             ) : (
-              <div className="space-y-4 mb-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600">Pedidos</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {selectedSlot.ordersCount}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Capacidade</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {selectedSlot.max_orders}
-                    </p>
-                  </div>
-                </div>
-
-                {isAdmin && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Atualizar capacidade máxima
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="50"
-                      defaultValue={selectedSlot.max_orders}
-                      onChange={(e) =>
-                        handleUpdateCapacity(parseInt(e.target.value))
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-
-                {isAdmin && (
-                  <>
-                    <label className="block text-sm font-medium text-gray-700 mt-4">
-                      Motivo para bloquear (opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Feriado, manutenção..."
-                      value={blockReason}
-                      onChange={(e) => setBlockReason(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-
-                    <button
-                      onClick={handleBlockSlot}
-                      className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-lg transition"
-                    >
-                      Bloquear Data
-                    </button>
-                  </>
-                )}
+              <div className="space-y-3">
+                {selectedDayOrders.map((o) => (
+                  <Link
+                    key={o.id}
+                    href={`/dashboard/orders/${o.id}`}
+                    className="flex items-center justify-between p-3 bg-gray-50 hover:bg-blue-50 rounded-lg border border-gray-100 hover:border-blue-200 transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400 font-mono w-14 shrink-0">
+                        {new Date(o.delivery_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900 group-hover:text-blue-700">{o.customer_name}</p>
+                        <p className="text-xs text-gray-400">#{String(o.number).slice(-4)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColors[o.status] || 'bg-gray-100 text-gray-600'}`}>
+                        {o.status}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-700">
+                        {o.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
               </div>
             )}
-
-            <button
-              onClick={() => {
-                setShowModal(false);
-                setBlockReason('');
-              }}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 rounded-lg transition"
-            >
-              Fechar
-            </button>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

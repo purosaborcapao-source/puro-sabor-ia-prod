@@ -208,7 +208,13 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs text-gray-500">
-                      <span>{order.delivery_date ? new Date(order.delivery_date).toLocaleDateString("pt-BR") : 'Sem data'}</span>
+                      <span>{order.delivery_date
+                        ? (() => {
+                            const dt = new Date(order.delivery_date);
+                            return `${dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h`;
+                          })()
+                        : 'Sem data'
+                      }</span>
                       <span className="font-semibold text-gray-900 dark:text-gray-100">
                         {order.total.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                       </span>

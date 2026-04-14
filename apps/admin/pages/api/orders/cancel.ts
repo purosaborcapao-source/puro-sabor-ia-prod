@@ -81,29 +81,6 @@ export default async function handler(
       throw updateError;
     }
 
-    // Decrement slot count
-    const { data: slot, error: slotError } = await supabase
-      .from('delivery_slots')
-      .select('current_orders')
-      .eq('date', order.delivery_date)
-      .single();
-
-    if (!slotError && slot) {
-      const newCount = Math.max(0, (slot.current_orders || 0) - 1);
-
-      const { error: slotUpdateError } = await supabase
-        .from('delivery_slots')
-        .update({
-          current_orders: newCount,
-        })
-        .eq('date', order.delivery_date);
-
-      if (slotUpdateError) {
-        console.error('Error updating slot:', slotUpdateError);
-        // Don't fail the request, just log the error
-      }
-    }
-
     // Log the change
     const { error: logError } = await supabase.from('order_changes').insert({
       order_id: orderId,

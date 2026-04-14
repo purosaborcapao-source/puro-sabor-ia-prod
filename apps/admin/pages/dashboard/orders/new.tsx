@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { DeliveryDateSelector } from '@/components/Orders/DeliveryDateSelector';
-import { useDeliverySlots } from '@/hooks/useDeliverySlots';
 import { supabase } from '@atendimento-ia/supabase';
 import { ArrowLeftIcon, AlertCircle, CheckCircle } from 'lucide-react';
 
@@ -41,7 +40,7 @@ interface Customer {
 export default function NewOrderPage() {
   const router = useRouter();
   const { profile, loading: authLoading } = useAuth();
-  const { validateDeliveryDate, incrementSlotCount } = useDeliverySlots();
+  // delivery_slots removido — sem validação de capacidade
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -307,16 +306,14 @@ export default function NewOrderPage() {
     try {
       setSubmitting(true);
 
-      // Validate delivery date
-      const validation = await validateDeliveryDate(formData.delivery_date);
-      if (!validation.isAvailable) {
-        setErrors({ delivery_date: validation.message });
-        return;
-      }
-
-      // Generate order number
       // Generate order number (Internal ID, the public one is order_number from sequence)
       const orderNumber = `MANUAL-${Date.now().toString().slice(-6)}`;
+
+      // delivery_date: o input datetime-local retorna YYYY-MM-DDTHH:mm, 
+      // precisamos converter para ISO string completo
+      const deliveryDateISO = formData.delivery_date
+        ? new Date(formData.delivery_date).toISOString()
+        : null;
 
       // Create order
       const { data: order, error: orderError } = await supabase
@@ -324,7 +321,7 @@ export default function NewOrderPage() {
         .insert({
           number: orderNumber,
           customer_id: formData.customer_id,
-          delivery_date: formData.delivery_date,
+          delivery_date: deliveryDateISO,
           delivery_type: formData.delivery_type,
           address: formData.address || null,
           total: formData.total,
@@ -332,7 +329,7 @@ export default function NewOrderPage() {
           status: 'PENDENTE',
           payment_status: 'SINAL_PENDENTE',
           notes: formData.notes || null,
-        })
+        } as any)
         .select()
         .single();
 
@@ -351,9 +348,6 @@ export default function NewOrderPage() {
         .insert(itemsToInsert);
 
       if (itemsError) throw itemsError;
-
-      // Increment slot count
-      await incrementSlotCount(formData.delivery_date);
 
       setSuccess(true);
       setTimeout(() => {

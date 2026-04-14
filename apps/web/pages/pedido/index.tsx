@@ -60,6 +60,9 @@ export default function PedidoPage() {
       const { data: orderParams, error: orderErr } = await supabasePublic
         .from('orders')
         .insert({
+          customer_id: 'guest-web-checkout',
+          number: `WEB-${Date.now()}`,
+          delivery_type: 'RETIRADA',
           total: total,
           sinal_valor: sinalValor,
           payment_status: 'SINAL_PENDENTE',
