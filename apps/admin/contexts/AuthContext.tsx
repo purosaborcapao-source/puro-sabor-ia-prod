@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { Session, User as SupabaseUser } from '@supabase/supabase-js'
+import { Session, User as SupabaseUser, createClient } from '@supabase/supabase-js'
 import { supabase } from '@atendimento-ia/supabase'
 import { useRouter } from 'next/router'
 
@@ -49,6 +49,13 @@ const getDeviceName = () => {
   return `${browser} on ${os}`;
 };
 
+// Client sem tipos restritivos do Database para tabelas extras
+const getUntypedClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  return createClient(supabaseUrl, supabaseKey) as any;
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<SupabaseUser | null>(null)
@@ -57,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabaseClient = supabase
+  const untypedClient = getUntypedClient()
 
   useEffect(() => {
     let isMounted = true
@@ -134,7 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     // Heartbeat loop (every 5 min)
     const heartbeatInterval = setInterval(async () => {
-        await supabaseClient.from('operator_sessions')
+        await untypedClient.from('operator_sessions')
           .update({ last_seen_at: new Date().toISOString() })
           .eq('user_id', user.id)
           .eq('device_id', deviceId)
@@ -144,7 +152,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .on('postgres_changes', { 
         event: 'UPDATE', 
         schema: 'public', 
-        table: 'operator_sessions',
+        table: 'operator_sessions' as any,
         filter: `user_id=eq.${user.id}` 
       }, (payload) => {
         // Se a minha própria sessão for desativada (is_active = false)
@@ -172,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const validateSessionStatus = async (userId: string) => {
       const deviceId = getDeviceId();
-      const { data } = await supabaseClient.from('operator_sessions')
+      const { data } = await untypedClient
         .select('*')
         .eq('user_id', userId)
         .eq('device_id', deviceId)
@@ -185,19 +193,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Sessão inválida ou expirada (mais de 18 horas)
         
         if (data.is_active) {
-            await supabaseClient.from('operator_login_history').insert({
+            await untypedClient.from('operator_login_history').insert({
                 user_id: userId,
                 action: 'SESSION_EXPIRED',
                 device_id: deviceId,
                 device_name: data.device_name
             });
-            await supabaseClient.from('operator_sessions').update({ is_active: false }).eq('id', data.id);
+            await untypedClient.update({ is_active: false }).eq('id', data.id);
         }
         
         forceLocalSignOut();
       } else {
         // Sessão válida, envia heartbeat inicial
-        await supabaseClient.from('operator_sessions')
+        await untypedClient
           .update({ last_seen_at: new Date().toISOString() })
           .eq('id', data.id);
       }
@@ -208,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const deviceName = getDeviceName();
     
     // Inserir login hostory
-    await supabaseClient.from('operator_login_history').insert({
+    await untypedClient.from('operator_login_history').insert({
         user_id: userId,
         action: 'LOGIN',
         device_id: deviceId,
@@ -217,20 +225,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Upsert operator_sessions
-    const { data: existing } = await supabaseClient.from('operator_sessions')
+    const { data: existing } = await untypedClient
         .select('id')
         .eq('user_id', userId)
         .eq('device_id', deviceId)
         .single();
         
     if (existing) {
-        await supabaseClient.from('operator_sessions').update({
+        await untypedClient.update({
             is_active: true,
             last_seen_at: new Date().toISOString(),
             expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
         }).eq('id', existing.id);
     } else {
-        await supabaseClient.from('operator_sessions').insert({
+        await untypedClient.insert({
             user_id: userId,
             device_id: deviceId,
             device_name: deviceName,
@@ -278,11 +286,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
           const deviceId = getDeviceId();
           // Desativa todas as sessoes deste user_id (Logout multi-device)
-          await supabaseClient.from('operator_sessions')
+          await untypedClient
             .update({ is_active: false })
             .eq('user_id', user.id);
             
-          await supabaseClient.from('operator_login_history').insert({
+          await untypedClient.from('operator_login_history').insert({
             user_id: user.id,
             action: 'LOGOUT',
             device_id: deviceId,

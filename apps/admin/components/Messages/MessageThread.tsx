@@ -120,7 +120,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar mensagens
       const { data, error: messagesError } = await supabase
         .from("messages")
-        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true });
@@ -129,7 +129,16 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         throw messagesError;
       }
 
-      setMessages((data as Message[]) || []);
+      // Type guard para filtrar erros de query
+      const validMessages: Message[] = [];
+      if (Array.isArray(data)) {
+        for (const m of data) {
+          if (m && typeof m === 'object' && 'id' in m && 'direction' in m) {
+            validMessages.push(m as Message);
+          }
+        }
+      }
+      setMessages(validMessages);
 
       // Marca mensagens não lidas como lidas
       const unreadIds = data

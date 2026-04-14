@@ -84,6 +84,8 @@ export const MessageInbox = React.memo(function MessageInbox() {
             phone: msg.phone,
             customer_name: msg.customers?.name || "Desconhecido",
             last_message: msg.content,
+            content: msg.content,
+            type: msg.type || "text",
             last_message_time: msg.created_at,
             unread_count: 0,
             direction: msg.direction,
