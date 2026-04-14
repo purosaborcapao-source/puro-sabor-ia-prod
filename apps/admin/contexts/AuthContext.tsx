@@ -208,40 +208,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const registerSession = async (userId: string) => {
-    const deviceId = getDeviceId();
-    const deviceName = getDeviceName();
-    
-    // Inserir login hostory
-    await untypedClient.from('operator_login_history').insert({
-        user_id: userId,
-        action: 'LOGIN',
-        device_id: deviceId,
-        device_name: deviceName,
-        ip_address: 'CLIENT'
-    });
+    try {
+      const deviceId = getDeviceId();
+      const deviceName = getDeviceName();
+      
+      // Inserir login hostory
+      await untypedClient.from('operator_login_history').insert({
+          user_id: userId,
+          action: 'LOGIN',
+          device_id: deviceId,
+          device_name: deviceName,
+          ip_address: 'CLIENT'
+      });
 
-    // Upsert operator_sessions
-    const { data: existing } = await untypedClient
-        .from('operator_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('device_id', deviceId)
-        .single();
-        
-    if (existing) {
-        await untypedClient.from('operator_sessions').update({
-            is_active: true,
-            last_seen_at: new Date().toISOString(),
-            expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
-        }).eq('id', existing.id);
-    } else {
-        await untypedClient.from('operator_sessions').insert({
-            user_id: userId,
-            device_id: deviceId,
-            device_name: deviceName,
-            is_active: true,
-            expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
-        });
+      // Upsert operator_sessions
+      const { data: existing } = await untypedClient
+          .from('operator_sessions')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('device_id', deviceId)
+          .single();
+          
+      if (existing) {
+          await untypedClient.from('operator_sessions').update({
+              is_active: true,
+              last_seen_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+          }).eq('id', existing.id);
+      } else {
+          await untypedClient.from('operator_sessions').insert({
+              user_id: userId,
+              device_id: deviceId,
+              device_name: deviceName,
+              is_active: true,
+              expires_at: new Date(Date.now() + 18 * 60 * 60 * 1000).toISOString()
+          });
+      }
+    } catch (err: any) {
+      console.error('🔥 AuthContext: registerSession falhou silenciosamente ->', err.message);
     }
   };
 

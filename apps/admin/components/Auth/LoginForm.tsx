@@ -27,19 +27,18 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema)
   })
 
-  // Redireciona para dashboard após login bem-sucedido e profile carregado
+  // Redireciona para dashboard após login bem-sucedido ou caso o usuário abra e já possua profile carregado
   useEffect(() => {
-    if (loginAttempted && profile) {
+    if (profile) {
       if (profile.role === 'ADMIN' || profile.role === 'ATENDENTE') {
         router.push('/dashboard')
       } else {
         setErrorMessage(
           'Acesso negado. Você não tem permissão para acessar este painel.'
         )
-        setLoginAttempted(false)
       }
     }
-  }, [loginAttempted, profile, router])
+  }, [profile, router])
 
   const onSubmit = async (data: LoginFormData) => {
     try {
