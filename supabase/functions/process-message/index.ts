@@ -158,7 +158,7 @@ REGRAS DE EXTRAÇÃO:
           matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
 
-        const customText = line.match(/• .+? • (.+?)(?: \(R\$|$)/)?.[1] || '';
+        const customText = line.match(/•\s*\d+(x|g|kg)?\s+.*?(?:\s*•\s*)(.+?)(?:\s*\(R\$|$)/)?.[1] || '';
         
         return {
           product_id: matchedProduct?.id,
@@ -394,8 +394,11 @@ const orderNotes = extractedData?.delivery_time
         number: orderNumber,
         customer_id: customerId,
         delivery_date: extractedData?.delivery_date ? convertToDbDate(extractedData.delivery_date) : null,
+        delivery_type: "RETIRADA",
         status: "PENDENTE",
         payment_status: "SINAL_PENDENTE",
+        ai_processed: true,
+        sinal_confirmado: false,
         notes: fullNotes,
         total: extractedData?.total || 0, 
       })
