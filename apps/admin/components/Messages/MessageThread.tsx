@@ -118,10 +118,28 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         .map((m: any) => m.id);
 
       if (unreadIds.length > 0) {
+        // Buscar dados do operador atual
+        const { data: { user } } = await supabase.auth.getUser();
+        const operatorId = user?.id;
+
+        // Buscar nome do operador
+        let operatorName = null;
+        if (operatorId) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("name")
+            .eq("id", operatorId)
+            .single();
+          if (profileData) operatorName = profileData.name;
+        }
+
+        // Atualizar mensagens com informações do operador que leu
         await supabase
           .from("messages")
           .update({
             is_read: true,
+            read_by_operator_id: operatorId || null,
+            read_by_operator_name: operatorName,
           })
           .in("id", unreadIds);
       }
