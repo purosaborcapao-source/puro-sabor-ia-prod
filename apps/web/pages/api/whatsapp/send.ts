@@ -10,6 +10,12 @@ const ZAPI_INSTANCE_ID = process.env.NEXT_PUBLIC_ZAPI_INSTANCE_ID;
 const ZAPI_TOKEN = process.env.NEXT_PUBLIC_ZAPI_TOKEN;
 const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`;
 
+console.log("🔧 Config:", { 
+  hasInstance: !!ZAPI_INSTANCE_ID, 
+  hasToken: !!ZAPI_TOKEN,
+  hasClientToken: !!process.env.ZAPI_CLIENT_TOKEN 
+});
+
 type ApiResponse = {
   success: boolean;
   messageId?: string;
@@ -21,6 +27,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<ApiResponse>
 ) {
+  console.log("📤 WhatsApp API Called:", { method: req.method, body: req.body });
+  
   if (req.method !== "POST") {
     return res.status(405).json({ success: false, error: "Method not allowed" });
   }
@@ -89,7 +97,7 @@ export default async function handler(
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
     console.error("🔥 API Error:", err);
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return res.status(500).json({ success: false, error: message });
+    const message = err instanceof Error ? err.message : String(err);
+    return res.status(500).json({ success: false, error: "Erro: " + message });
   }
 }
