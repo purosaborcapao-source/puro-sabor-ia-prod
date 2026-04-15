@@ -5,13 +5,14 @@ import { GeneralSettings } from '@/components/Settings/GeneralSettings'
 import { PaymentSettings } from '@/components/Settings/PaymentSettings'
 import { AISettings } from '@/components/Settings/AISettings'
 import { GreetingSettings } from '@/components/Settings/GreetingSettings'
+import { AdvancedSettingsTable } from '@/components/Settings/AdvancedSettingsTable'
 import { useState, useEffect } from 'react'
-import { Settings, CreditCard, Bot, MessageSquare } from 'lucide-react'
+import { Settings, CreditCard, Bot, MessageSquare, Sliders } from 'lucide-react'
 
 export default function SettingsPage() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
-  const [activeTab, setActiveTab] = useState<'general' | 'payment' | 'ai' | 'greeting'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'payment' | 'ai' | 'greeting' | 'advanced'>('general')
 
   useEffect(() => {
     if (!loading && !user) {
@@ -112,6 +113,17 @@ export default function SettingsPage() {
               <MessageSquare className="w-4 h-4" />
               Saudação & Atalhos
             </button>
+            <button
+              onClick={() => setActiveTab('advanced')}
+              className={`flex items-center gap-2 py-4 px-2 border-b-2 transition-colors font-medium text-sm ${
+                activeTab === 'advanced'
+                  ? 'border-purple-600 text-purple-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              Avançado
+            </button>
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 shadow-sm">
@@ -119,6 +131,7 @@ export default function SettingsPage() {
             {activeTab === 'payment' && <PaymentSettings />}
             {activeTab === 'ai' && <AISettings />}
             {activeTab === 'greeting' && <GreetingSettings />}
+            {activeTab === 'advanced' && <AdvancedSettingsTable />}
           </div>
         </main>
       </div>
