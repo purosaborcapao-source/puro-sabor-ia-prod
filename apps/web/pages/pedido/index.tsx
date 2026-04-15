@@ -115,44 +115,16 @@ ${itemsList}
     setIsSubmitting(true);
     try {
       const orderSummary = generateOrderSummary(data);
-
-      let result;
-      try {
-        const response = await fetch('/api/whatsapp/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'text',
-            phone: '5551999056903',
-            message: orderSummary
-          })
-        });
-
-        const text = await response.text();
-        
-        if (!response.ok || !text.includes('{')) {
-          console.error("API Error:", response.status, text);
-          throw new Error(`Servidor retornou ${response.status}: ${text.slice(0, 100)}`);
-        }
-        
-        result = JSON.parse(text);
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Falha ao enviar');
-        }
-      } catch (e: any) {
-        if (e instanceof SyntaxError || (e?.message?.includes('Unexpected token'))) {
-          throw new Error('API retornou erro, não JSON');
-        }
-        throw e;
-      }
-
+      const encodedMessage = encodeURIComponent(orderSummary);
+      
+      // Abre WhatsApp com resumo pronto para o cliente enviar
+      window.open(`https://wa.me/5551999056903?text=${encodedMessage}`, '_blank');
+      
       clearCart();
-      router.push('/pedido/confirmacao');
+      router.push('/');
 
     } catch (error) {
-      console.error("Erro ao enviar pedido: ", error);
-      alert("Ocorreu um erro ao enviar. Você pode falar direto no WhatsApp: wa.me/5551999056903");
+      console.error("Erro ao gerar pedido: ", error);
     } finally {
       setIsSubmitting(false);
     }
