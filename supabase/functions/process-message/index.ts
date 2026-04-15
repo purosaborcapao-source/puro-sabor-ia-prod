@@ -106,24 +106,24 @@ REGRAS DE EXTRAÇÃO:
     if (isWebAppOrder) {
       console.log("🛒 [process-message] Detectado pedido do Web App! Processamento Zero-AI.");
 
-      // Extrair data: "📅 Data: DD/MM/YYYY"
-      const dateMatch = text.match(/📅\s*Data:\s*(\d{2}\/\d{2}\/\d{4})/);
-      // Extrair horário: "🕐 Horário: HH:MM"
-      const timeMatch = text.match(/🕐\s*Horário:\s*(\d{2}:\d{2})/);
+      // Extrair data: "📅 Data da Encomenda: DD/MM/YYYY"
+      const dateMatch = text.match(/📅\s*Data da Encomenda:\s*(\d{2}\/\d{2}\/\d{4})/);
+      // Extrair horário: "⏰ Horário: HH:MM"
+      const timeMatch = text.match(/⏰\s*Horário:\s*(\d{2}:\d{2})/);
 
-      // Extrair observações do pedido
+      // Extrair observações do pedido (pode vir após "Aguardo confirmação!")
       const obsMatch = text.match(/📝\s*Observações:\s*(.+)/);
       const observation = obsMatch ? obsMatch[1].trim() : null;
 
-      // Extrair total: "💰 Valor Total do Pedido: R$ XXX,XX"
-      const totalMatch = text.match(/💰\s*Valor Total do Pedido:\s*R\$\s*([\d.,]+)/);
+      // Extrair total: "Total: R$ XXX,XX"
+      const totalMatch = text.match(/Total:\s*R\$\s*([\d.,]+)/);
       let orderTotal = 0;
       if (totalMatch) {
          orderTotal = parseFloat(totalMatch[1].replace(/\./g, '').replace(',', '.'));
       }
 
-      // Extrair sinal (opcional, para contexto)
-      const sinalMatch = text.match(/🔸\s*Sinal Sugerido:\s*R\$\s*([\d.,]+)/);
+      // Extrair sinal: "Sinal sugerido (~XX%): R$ XX,XX"
+      const sinalMatch = text.match(/Sinal\s+sugerido[^:]*:\s*R\$\s*([\d.,]+)/);
 
       const productLines = text.split('\n').filter(l => l.trim().startsWith('•'));
       const items = productLines.map(line => {
@@ -158,7 +158,8 @@ REGRAS DE EXTRAÇÃO:
           matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
 
-        const customText = line.match(/•\s*\d+(x|g|kg)?\s+.*?(?:\s*•\s*)(.+?)(?:\s*\(R\$|$)/)?.[1] || '';
+        const customMatch = line.match(/\s*-\s*(.+?)(?:\s*\[#|$)/);
+        const customText = customMatch ? customMatch[1] : '';
         
         return {
           product_id: matchedProduct?.id,
