@@ -134,9 +134,7 @@ REGRAS DE EXTRAÇÃO:
         }
         let quantity = parseFloat(qtyStr) || 1;
 
-        const cleanLine = line.toLowerCase();
-
-        // Extrair preço do item: "• XXx Nome (R$ XXX,XX)"
+        // Extrair preço do item: não tem mais no formato novo
         const priceMatch = line.match(/\(R\$\s*([\d.,]+)\)/);
         let itemPrice = 0;
         if (priceMatch) {
@@ -152,14 +150,15 @@ REGRAS DE EXTRAÇÃO:
           matchedProduct = products?.find(p => p.id.startsWith(shortId));
         }
 
-        // Fallback por nome (remover quantidade e preço para buscar)
+        // Fallback por nome
         if (!matchedProduct) {
           const nameOnly = line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim();
           matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
 
-        const customMatch = line.match(/\s*-\s*(.+?)(?:\s*\[#|$)/);
-        const customText = customMatch ? customMatch[1] : '';
+        // Extrair customização (texto depois do nome antes do [#XXXX])
+        const customMatch = line.match(/\s*-\s*(.+?)\s*\[#/);
+        const customText = customMatch ? customMatch[1].trim() : '';
         
         return {
           product_id: matchedProduct?.id,
