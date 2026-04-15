@@ -93,12 +93,14 @@ export default function PedidoPage() {
     const [year, month, day] = data.date.split('-');
     const dateFormatted = `${day}/${month}/${year}`;
 
+    const notes = data.notes ? `\n📝 Observações: ${data.notes}` : '';
+
     const summary = `📄 Resumo dos Itens:
 ${itemsList}
 💰 Valor Total do Pedido: R$ ${totalFormatted}
 🔸 Sinal Sugerido: R$ ${sinalFormatted} (para confirmar a data/produção)
 📅 Data: ${dateFormatted}
-🕐 Horário: ${data.time}`;
+🕐 Horário: ${data.time}${notes}`;
 
     return summary;
   };

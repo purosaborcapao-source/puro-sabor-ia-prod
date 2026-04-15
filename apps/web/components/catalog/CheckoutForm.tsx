@@ -12,12 +12,14 @@ interface CheckoutFormProps {
 export interface CheckoutData {
   date: string;
   time: string;
+  notes?: string;
 }
 
 export function CheckoutForm({ total, sinalValor, onBack, onSubmit, isSubmitting }: CheckoutFormProps) {
   const [formData, setFormData] = useState<CheckoutData>({
     date: '',
-    time: ''
+    time: '',
+    notes: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,6 +71,18 @@ export function CheckoutForm({ total, sinalValor, onBack, onSubmit, isSubmitting
               />
             </div>
           </div>
+        </div>
+
+        {/* Observações */}
+        <div className="bg-white p-6 rounded-3xl border border-orange-100 shadow-sm space-y-3">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-900/30 mb-2">Observações (opicional)</h3>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+            placeholder="Alguma observação especial para o pedido? Ex: necessidade de embalagem diferenciada, data/hora flexível, etc."
+            rows={3}
+            className="w-full px-4 py-3 bg-orange-50/50 rounded-2xl border border-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-100 transition-all text-sm font-medium resize-none"
+          />
         </div>
 
         {/* Resumo Financeiro */}

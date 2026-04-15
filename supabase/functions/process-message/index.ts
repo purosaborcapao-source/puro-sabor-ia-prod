@@ -111,6 +111,10 @@ REGRAS DE EXTRAÇÃO:
       // Extrair horário: "🕐 Horário: HH:MM"
       const timeMatch = text.match(/🕐\s*Horário:\s*(\d{2}:\d{2})/);
 
+      // Extrair observações do pedido
+      const obsMatch = text.match(/📝\s*Observações:\s*(.+)/);
+      const observation = obsMatch ? obsMatch[1].trim() : null;
+
       // Extrair total: "💰 Valor Total do Pedido: R$ XXX,XX"
       const totalMatch = text.match(/💰\s*Valor Total do Pedido:\s*R\$\s*([\d.,]+)/);
       let orderTotal = 0;
@@ -154,12 +158,14 @@ REGRAS DE EXTRAÇÃO:
           matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
 
+        const customText = line.match(/• .+? • (.+?)(?: \(R\$|$)/)?.[1] || '';
+        
         return {
           product_id: matchedProduct?.id,
           product: matchedProduct?.name || line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
           quantity: quantity,
           price: matchedProduct?.price || itemPrice || 0,
-          observation: line.replace(/\[#([a-f0-9]{8})\]/g, '').trim()
+          observation: customText || line.replace(/\[#([a-f0-9]{8})\]/g, '').trim()
         };
       });
 
@@ -182,7 +188,8 @@ REGRAS DE EXTRAÇÃO:
           items,
           total: orderTotal,
           delivery_date: deliveryDate,
-          delivery_time: timeMatch ? timeMatch[1] : null
+          delivery_time: timeMatch ? timeMatch[1] : null,
+          observation: observation
         },
         suggested_response: "Recebemos seu pedido pelo catálogo Web! Nossa equipe já está revisando as informações e confirmará em breve.",
         should_escalate: true
@@ -373,9 +380,12 @@ async function createDraftOrder(
   try {
     const orderNumber = `IA-${Date.now().toString().slice(-6)}`;
     
-    const orderNotes = extractedData?.delivery_time 
-       ? `Horário de Retirada/Entrega: ${extractedData.delivery_time}\nCriado via WhatsApp.`
-       : `Criado automaticamente via WhatsApp.`;
+const orderNotes = extractedData?.delivery_time 
+        ? `Horário de Retirada/Entrega: ${extractedData.delivery_time}`
+        : '';
+    
+    const observation = extractedData?.observation || '';
+    const fullNotes = [orderNotes, observation].filter(Boolean).join('\n') + '\nCriado via Catálogo Web.';
 
     // 1. Criar o pedido
     const { data: order, error: orderError } = await supabase
@@ -386,7 +396,7 @@ async function createDraftOrder(
         delivery_date: extractedData?.delivery_date ? convertToDbDate(extractedData.delivery_date) : null,
         status: "PENDENTE",
         payment_status: "SINAL_PENDENTE",
-        notes: orderNotes,
+        notes: fullNotes,
         total: extractedData?.total || 0, 
       })
       .select()
