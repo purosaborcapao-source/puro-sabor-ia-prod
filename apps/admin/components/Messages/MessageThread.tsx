@@ -38,7 +38,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [isBlocked, setIsBlocked] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
-  const [currentOperatorName, setCurrentOperatorName] = useState<string | null>(null);
+  
   const realtimeDisconnected = false;
   const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -473,7 +473,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           </div>
         ) : (
           messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} currentOperatorName={currentOperatorName} />
+            <MessageBubble key={msg.id} message={msg} />
           ))
         )}
 

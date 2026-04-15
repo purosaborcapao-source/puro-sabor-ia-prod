@@ -16,10 +16,9 @@ interface Message {
 
 interface MessageBubbleProps {
   message: Message;
-  currentOperatorName?: string | null;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentOperatorName }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isIncoming = message.direction === "INBOUND";
   const payload = message.payload as any;
   const intent = payload?.intent;
