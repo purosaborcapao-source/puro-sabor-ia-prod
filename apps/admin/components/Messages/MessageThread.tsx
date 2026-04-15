@@ -6,6 +6,8 @@ import { AlertCircle, Ban, ShoppingCart, WifiOff } from "lucide-react";
 import { useRouter } from "next/router";
 import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
 import { SLATimer } from "./SLATimer";
+import { useChatPresence } from "@/contexts/ChatPresenceContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
   id: string;
@@ -16,6 +18,7 @@ interface Message {
   created_at: string | null;
   payload?: any;
   sent_by_operator_name?: string | null;
+  read_by_operator_name?: string | null;
 }
 
 interface MessageThreadProps {
@@ -23,6 +26,8 @@ interface MessageThreadProps {
 }
 
 export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
+  const { setOpenCustomer, clearOpenCustomer } = useChatPresence();
+  const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [customerName, setCustomerName] = useState("Cliente");
   const [customerPhone, setCustomerPhone] = useState<string | null>(null);
@@ -84,7 +89,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar mensagens (últimas 100 apenas)
       const { data, error: messagesError } = await supabase
         .from("messages")
-        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name, read_by_operator_name")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
@@ -113,7 +118,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
       setHasOlderMessages((countRes.count || 0) > 100);
 
-      // Marca mensagens não lidas como lidas
+      // Marca mensagens não lidas como lidas e grava quem as visualizou
       const unreadIds = data
         .filter((m: any) => m.direction === "INBOUND" && m.is_read === false)
         .map((m: any) => m.id);
@@ -121,7 +126,11 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       if (unreadIds.length > 0) {
         await supabase
           .from("messages")
-          .update({ is_read: true })
+          .update({
+            is_read: true,
+            read_by_operator_id: profile?.id || null,
+            read_by_operator_name: profile?.name || null,
+          })
           .in("id", unreadIds);
       }
     } catch (err) {
@@ -133,6 +142,12 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       setLoading(false);
     }
   }, [customerId]);
+
+  // Rastrear conversa aberta para atribuição de operador
+  useEffect(() => {
+    setOpenCustomer(customerId);
+    return () => clearOpenCustomer();
+  }, [customerId]); // eslint-disable-line
 
   // Carregar mensagens e setup realtime
   useEffect(() => {
@@ -253,7 +268,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       const oldestDate = messages[0].created_at;
       const { data: olderMessagesRaw, error } = await supabase
         .from("messages")
-        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name")
+        .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name, read_by_operator_name")
         .eq("customer_id", customerId)
         .lt("created_at", oldestDate)
         .order("created_at", { ascending: true })

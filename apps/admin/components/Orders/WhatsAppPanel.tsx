@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
+import { useAuth } from '@/contexts/AuthContext'
+import { useChatPresence } from '@/contexts/ChatPresenceContext'
 import {
   MessageCircle,
   Brain,
@@ -28,6 +30,7 @@ interface Message {
   media_url?: string | null
   created_at: string | null
   zapi_status?: string | null
+  sent_by_operator_name?: string | null
   payload?: {
     intent?: string
     confidence?: number
@@ -43,6 +46,8 @@ interface WhatsAppPanelProps {
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
+  const { profile } = useAuth()
+  const { openCustomerId } = useChatPresence()
   const [messages, setMessages] = useState<Message[]>([])
   const [loading, setLoading] = useState(true)
   const [text, setText] = useState('')
@@ -60,7 +65,7 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
       setLoading(true)
       const { data, error } = await supabase
         .from('messages')
-        .select('id, direction, type, content, media_url, created_at, zapi_status, payload')
+        .select('id, direction, type, content, media_url, created_at, zapi_status, sent_by_operator_name, payload')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: true })
       if (error) throw error
@@ -106,10 +111,11 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
 
     setSending(true)
     try {
+      const operatorId = openCustomerId === customerId ? profile?.id : undefined
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'text', phone, message: trimmed, customerId }),
+        body: JSON.stringify({ type: 'text', phone, message: trimmed, customerId, operatorId }),
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error)
@@ -161,10 +167,11 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
     try {
       const customerUrl = 'https://puro-sabor-catalogo.vercel.app';
       const message = `Olá! Segue nosso cardápio completo: ${customerUrl}. Qualquer dúvida estou à disposição! 🍰`
+      const operatorId = openCustomerId === customerId ? profile?.id : undefined
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'text', phone, message, customerId }),
+        body: JSON.stringify({ type: 'text', phone, message, customerId, operatorId }),
       })
       const data = await res.json()
       if (!data.success) throw new Error(data.error)
@@ -198,10 +205,12 @@ export function WhatsAppPanel({ phone, customerId }: WhatsAppPanelProps) {
 
       const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path)
 
-      const body: Record<string, string> = {
+      const operatorId = openCustomerId === customerId ? profile?.id : undefined
+      const body: Record<string, string | undefined> = {
         type,
         phone,
         customerId,
+        operatorId,
         ...(isImage
           ? { imageUrl: publicUrl, caption: '' }
           : { documentUrl: publicUrl, fileName: file.name }),
@@ -502,17 +511,24 @@ function MessageBubble({
         </div>
       )}
 
-      {/* Timestamp + status */}
+      {/* Timestamp + status + operador */}
       <div className="flex items-center gap-1.5">
         <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
           {message.created_at ? new Date(message.created_at!).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
         </span>
         {!isIncoming && (
-          <CheckCheck
-            className={`w-3 h-3 ${
-              message.zapi_status === 'READ' ? 'text-blue-500' : 'text-gray-400'
-            }`}
-          />
+          <>
+            <CheckCheck
+              className={`w-3 h-3 ${
+                message.zapi_status === 'READ' ? 'text-blue-500' : 'text-gray-400'
+              }`}
+            />
+            {message.sent_by_operator_name && (
+              <span className="text-[9px] text-gray-400">
+                {message.sent_by_operator_name.split(' ')[0]}
+              </span>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@atendimento-ia/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useChatPresence } from '@/contexts/ChatPresenceContext';
 import { FieldWithPermission } from '@/components/UI/FieldWithPermission';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RegisterPaymentModal } from './RegisterPaymentModal';
@@ -58,6 +59,7 @@ interface OrderDetailProps {
 
 export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const { profile } = useAuth();
+  const { openCustomerId } = useChatPresence();
   const [order, setOrder] = useState<Order | null>(null);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -250,18 +252,22 @@ ${pixPayloadStr}
 
 Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
 
+      // Só atribui ao operador se ele estiver com a conversa do cliente aberta no chat
+      const operatorId = openCustomerId === order.customer_id ? profile?.id : undefined
+
       // 1. Enviar primeiro o texto (que inclui o copia e cola do Pix)
       const resText = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'text', 
-          phone: order.customer_phone, 
-          message: text, 
-          customerId: order.customer_id 
+        body: JSON.stringify({
+          type: 'text',
+          phone: order.customer_phone,
+          message: text,
+          customerId: order.customer_id,
+          operatorId,
         }),
       });
-      
+
       const dataText = await resText.json();
       if (!dataText.success) throw new Error(dataText.error);
 
@@ -269,12 +275,13 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
       const resImage = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type: 'image', 
-          phone: order.customer_phone, 
+        body: JSON.stringify({
+          type: 'image',
+          phone: order.customer_phone,
           imageUrl: qrCodeUrl,
-          caption: "Seu QR Code PIX ☝️", 
-          customerId: order.customer_id 
+          caption: "Seu QR Code PIX ☝️",
+          customerId: order.customer_id,
+          operatorId,
         }),
       });
 
@@ -535,7 +542,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                             },
                             body: JSON.stringify({
                               order_id: orderId,
-                              type: saldoDue >= order.total ? 'SINAL' : 'ENTREGA',
+                              type: saldoDue >= order.total ? 'SINAL' : 'SALDO',
                               method: m.id,
                               valor: saldoDue,
                               notes: 'Baixa Expressa (Mini Escolha)'

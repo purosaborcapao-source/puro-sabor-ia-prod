@@ -11,7 +11,7 @@ interface Message {
   created_at: string | null;
   payload?: any;
   sent_by_operator_name?: string | null;
-  assigned_operator_name?: string | null;
+  read_by_operator_name?: string | null;
 }
 
 interface MessageBubbleProps {
@@ -73,17 +73,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentOp
         )}
 
         <div className="flex items-center justify-between gap-4 mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/50">
-          {/* Intent badge */}
           {/* Intent & Operador */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {isIncoming && intent ? (
               <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 {intent}
               </span>
             ) : null}
-            {!isIncoming && (
-              <span className="text-[8px] font-medium tracking-tight text-zinc-400 dark:text-zinc-500/40 uppercase">
-                {message.sent_by_operator_name || currentOperatorName?.split(' ')[0] || 'Você'}
+            {isIncoming && message.read_by_operator_name && (
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                {message.read_by_operator_name.split(' ')[0]}
+              </span>
+            )}
+            {!isIncoming && message.sent_by_operator_name && (
+              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                {message.sent_by_operator_name.split(' ')[0]}
               </span>
             )}
           </div>
