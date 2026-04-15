@@ -63,8 +63,11 @@ export default async function handler(
     }
 
     if (!zapiResponse.ok) {
+      console.error("Z-API failed:", zapiData);
       return res.status(400).json({ success: false, error: zapiData?.error || "Failed to send", details: zapiData });
     }
+
+    console.log("✅ Z-API success:", zapiData);
 
     // Salvar mensagem no banco
     const supabase = createClient(
@@ -86,6 +89,7 @@ export default async function handler(
       console.error("Save Error:", insertErr);
     }
 
+    console.log("✅ Message sent, saved to DB:", zapiData.messageId);
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
     console.error("API Error:", err);
