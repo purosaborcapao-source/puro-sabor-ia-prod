@@ -102,7 +102,7 @@ async function handleRegisterPayment(
     }
 
     // Validate type enum
-    const validTypes = ['SINAL', 'SALDO', 'ADIANTADO', 'POSTERIOR']
+    const validTypes = ['SINAL', 'SALDO', 'ANTECIPADO', 'PARCIAL']
     if (!validTypes.includes(type)) {
       return res.status(400).json({
         error: `Invalid type. Must be one of: ${validTypes.join(', ')}`

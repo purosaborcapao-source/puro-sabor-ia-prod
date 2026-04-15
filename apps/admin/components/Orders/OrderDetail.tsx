@@ -46,7 +46,7 @@ interface PaymentEntry {
   id: string;
   payment_type: 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO';
   amount: number;
-  status: 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'REJEITADO';
+  status: 'CONFIRMADO' | 'REJEITADO';
   notes?: string;
   created_at: string;
 }
@@ -143,7 +143,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
           id: p.id,
           payment_type: p.type as 'SINAL' | 'SALDO' | 'PARCIAL' | 'ANTECIPADO',
           amount: p.valor,
-          status: p.status as 'AGUARDANDO_CONFIRMACAO' | 'CONFIRMADO' | 'REJEITADO',
+          status: p.status as 'CONFIRMADO' | 'REJEITADO',
           notes: p.notes,
           created_at: p.registered_at || p.created_at
         }));
