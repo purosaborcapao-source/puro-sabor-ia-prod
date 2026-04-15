@@ -7,7 +7,6 @@ import { useRouter } from "next/router";
 import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
 import { SLATimer } from "./SLATimer";
 import { useChatPresence } from "@/contexts/ChatPresenceContext";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
   id: string;
@@ -27,7 +26,6 @@ interface MessageThreadProps {
 
 export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const { setOpenCustomer, clearOpenCustomer } = useChatPresence();
-  const { profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [customerName, setCustomerName] = useState("Cliente");
   const [customerPhone, setCustomerPhone] = useState<string | null>(null);
@@ -124,8 +122,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           .from("messages")
           .update({
             is_read: true,
-            read_by_operator_id: profile?.id || null,
-            read_by_operator_name: profile?.name || null,
           })
           .in("id", unreadIds);
       }
