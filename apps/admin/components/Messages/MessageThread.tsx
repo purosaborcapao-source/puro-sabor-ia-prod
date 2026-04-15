@@ -41,6 +41,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const isFirstLoadRef = useRef(true);
 
   // Refs para controlar auto-assignment e bloquear realtime durante write
   const autoAssignDoneRef = useRef(false);
@@ -80,14 +81,14 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         setIsBlocked((convData as any).is_blocked || false);
       }
 
-      // Buscar mensagens (últimas 100 apenas)
+      // Buscar mensagens (últimas 30 apenas)
       const { data, error: messagesError } = await supabase
         .from("messages")
         .select("id, direction, content, type, media_url, created_at, payload, is_read, sent_by_operator_name, read_by_operator_name")
         .eq("customer_id", customerId)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
-        .limit(100);
+        .limit(30);
 
       if (messagesError) {
         throw messagesError;
@@ -104,13 +105,21 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       }
       setMessages(validMessages);
 
-      // Verificar se há MAIS mensagens além das 100 carregadas
+      // Scroll para última mensagem apenas no primeiro carregamento
+      if (isFirstLoadRef.current && validMessages.length > 0) {
+        isFirstLoadRef.current = false;
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ block: "end" });
+        }, 0);
+      }
+
+      // Verificar se há MAIS mensagens além das 30 carregadas
       const countRes = await supabase
         .from("messages")
         .select("id", { count: "exact" })
         .eq("customer_id", customerId);
 
-      setHasOlderMessages((countRes.count || 0) > 100);
+      setHasOlderMessages((countRes.count || 0) > 30);
 
       // Marca mensagens não lidas como lidas e grava quem as visualizou
       const unreadIds = data
@@ -173,8 +182,9 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       if (!cancelled) loadMessages();
     };
 
-    // Reset auto-assign flag quando customerId muda
+    // Reset auto-assign flag e scroll ref quando customerId muda
     autoAssignDoneRef.current = false;
+    isFirstLoadRef.current = false; // Permite novo scroll na próxima conversa
 
     safeLoad();
 
@@ -262,7 +272,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         .lt("created_at", oldestDate)
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
-        .limit(100);
+        .limit(30);
 
       if (error) throw error;
 
@@ -278,8 +288,8 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
       if (olderMessages.length > 0) {
         setMessages([...olderMessages, ...messages]);
-        // Se retornou menos de 100, não há mais mensagens antigas
-        if (olderMessages.length < 100) {
+        // Se retornou menos de 30, não há mais mensagens antigas
+        if (olderMessages.length < 30) {
           setHasOlderMessages(false);
         }
       }
