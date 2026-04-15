@@ -152,7 +152,10 @@ async function handleRegisterPayment(
       })
     }
 
-    // Create payment entry
+    // Auto-confirm payment immediately
+    const now = new Date().toISOString()
+
+    // Create payment entry with CONFIRMADO status
     const { data: newPayment, error: paymentError } = await supabaseServer
       .from('payment_entries')
       .insert({
@@ -161,9 +164,11 @@ async function handleRegisterPayment(
         method,
         valor: newAmount,
         registered_by: userId,
-        status: 'AGUARDANDO_CONFIRMACAO',
+        status: 'CONFIRMADO',
+        confirmed_by: userId,
+        confirmed_at: now,
         notes: notes || null,
-        registered_at: new Date().toISOString()
+        registered_at: now
       })
       .select()
       .single()
@@ -179,13 +184,13 @@ async function handleRegisterPayment(
       field: 'payment_registered',
       old_value: null,
       new_value: `${type} via ${method}: R$ ${valor}`,
-      reason: `Pagamento registrado manualmente (Status: AGUARDANDO_CONFIRMACAO)`
+      reason: `Pagamento registrado e confirmado automaticamente`
     })
 
     return res.status(201).json({
       success: true,
       data: newPayment,
-      message: 'Payment registered successfully. Awaiting confirmation.'
+      message: 'Pagamento registrado e confirmado com sucesso'
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
