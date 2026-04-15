@@ -65,8 +65,6 @@ export default function PedidoPage() {
         const qty = item.sale_unit === 'KG'
           ? `${item.quantity}g`
           : `${item.quantity}x`;
-        const itemTotal = item.quantity * item.price;
-        const itemTotalFormatted = itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const customizations = item.customizations
           ? ` - ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]
               .filter(Boolean)
