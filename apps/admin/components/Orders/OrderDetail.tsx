@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FieldWithPermission } from '@/components/UI/FieldWithPermission';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RegisterPaymentModal } from './RegisterPaymentModal';
-import { ConfirmPaymentButton } from './ConfirmPaymentButton';
 import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
@@ -70,7 +69,6 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const [sugestedSinal, setSugestedSinal] = useState('');
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
-  const canConfirmPayment = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
 
   useEffect(() => {
     loadData();
@@ -329,7 +327,6 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
     .reduce((sum, p) => sum + p.amount, 0);
 
   const saldoDue = Math.max(0, order.total - totalConfirmed);
-  const pendingPayments = paymentEntries.filter((p) => p.status === 'AGUARDANDO_CONFIRMACAO');
 
   return (
     <div className={isCompact ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-8"}>
@@ -502,28 +499,6 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
           </div>
         )}
 
-        {pendingPayments.length > 0 && canConfirmPayment && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-yellow-900 dark:text-yellow-200 mb-4">⏳ Pagamentos Aguardando Confirmação</h3>
-            <div className="space-y-3">
-              {pendingPayments.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-yellow-200">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {payment.payment_type} - {payment.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </p>
-                  </div>
-                  <ConfirmPaymentButton
-                    paymentEntryId={payment.id}
-                    paymentType={payment.payment_type}
-                    paymentAmount={payment.amount}
-                    onSuccess={() => setRefreshKey(k => k + 1)}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-4">
