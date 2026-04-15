@@ -243,11 +243,17 @@ REGRAS DE EXTRAÇÃO:
       await createDraftOrder(supabase, customer_id, parsed.extracted_data);
 
       // Atualizar status da conversa para WAITING_ORDER para aparecer no Kanban
-      await supabase
+      const { error: convError } = await supabase
         .from('conversations')
-        .update({ status: 'WAITING_ORDER' })
-        .eq('customer_id', customer_id)
-        .catch((err) => console.warn("⚠️ Erro ao atualizar status conversa:", err));
+        .upsert({ 
+          customer_id, 
+          status: 'WAITING_ORDER',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'customer_id' });
+      
+      if (convError) {
+        console.warn("⚠️ Erro ao atualizar conversa:", convError);
+      }
     }
 
     // Gatilhos de notificação desativados conforme solicitação (IA Passiva)
