@@ -12,7 +12,7 @@ interface OrderItem {
     category: string
     sale_unit: string
   }
-  notes?: string
+  notes?: string | null
 }
 
 interface OrderItemListProps {

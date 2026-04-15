@@ -18,7 +18,7 @@ interface OrderItem {
   quantity: number;
   unit_price: number;
   product?: { name: string; sale_unit?: string };
-  notes?: string;
+  notes?: string | null;
   sale_unit?: string;
 }
 
@@ -35,8 +35,8 @@ interface Order {
   updated_at: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
-  notes?: string;
-  customer_obs?: string;
+  notes?: string | null;
+  customer_obs?: string | null;
   created_at: string | null;
   discount?: number;
   discount_reason?: string;
