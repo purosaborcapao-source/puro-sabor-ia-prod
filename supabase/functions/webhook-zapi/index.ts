@@ -515,30 +515,30 @@ export async function handleZapiWebhook(request: Request): Promise<Response> {
       );
     }
 
-    // 3. Disparar processamento de IA apenas para mensagens INBOUND de texto genuinamente novas
-    if (type === "text" && direction === "INBOUND" && insertedMsg) {
-      fetch(
-        `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-message`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
-          },
-          body: JSON.stringify({
-            message_id: insertedMsg.id,
-            customer_id: activeCustomer.id,
-            phone: resolvedPhone,
-            text: content,
-          }),
-        }
-      ).catch((err) => console.error("⚠️ process-message error:", err));
+    // 3. IA DESABILITADA - Processamento desativado conforme solicitação do usuário
+    // if (type === "text" && direction === "INBOUND" && insertedMsg) {
+    //   fetch(
+    //     `${Deno.env.get("SUPABASE_URL")}/functions/v1/process-message`,
+    //     {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //         Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+    //       },
+    //       body: JSON.stringify({
+    //         message_id: insertedMsg.id,
+    //         customer_id: activeCustomer.id,
+    //         phone: resolvedPhone,
+    //         text: content,
+    //       }),
+    //     }
+    //   ).catch((err) => console.error("⚠️ process-message error:", err));
 
-      // 4. Bot de saudação automática (fire-and-forget)
-      runGreetingBot(supabase, activeCustomer.id, resolvedPhone, content, greetingWindowMs).catch(
-        (err) => console.error("⚠️ [bot] Erro no greeting bot:", err)
-      );
-    }
+    //   // 4. Bot de saudação automática (fire-and-forget)
+    //   runGreetingBot(supabase, activeCustomer.id, resolvedPhone, content, greetingWindowMs).catch(
+    //     (err) => console.error("⚠️ [bot] Erro no greeting bot:", err)
+    //   );
+    // }
 
     return new Response(
       JSON.stringify({
