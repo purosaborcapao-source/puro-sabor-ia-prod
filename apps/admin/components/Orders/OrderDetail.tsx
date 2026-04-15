@@ -38,6 +38,8 @@ interface Order {
   discount?: number;
   discount_reason?: string;
   delivery_fee?: number;
+  total_received?: number;
+  balance_due?: number;
 }
 
 interface PaymentEntry {
@@ -116,6 +118,8 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         discount: (orderData as any).discount || 0,
         discount_reason: (orderData as any).discount_reason || '',
         delivery_fee: (orderData as any).delivery_fee || 0,
+        total_received: (orderData as any).total_received || 0,
+        balance_due: (orderData as any).balance_due || 0,
         items: (orderData as any).order_items?.map((item: any) => ({
            quantity: item.quantity,
            unit_price: item.unit_price,
@@ -322,11 +326,9 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
     );
   }
 
-  const totalConfirmed = paymentEntries
-    .filter((p) => p.status === 'CONFIRMADO')
-    .reduce((sum, p) => sum + p.amount, 0);
-
-  const saldoDue = Math.max(0, order.total - totalConfirmed);
+  // Use values from database (synced via triggers) instead of calculating in frontend
+  const totalConfirmed = order.total_received || 0;
+  const saldoDue = order.balance_due || 0;
 
   return (
     <div className={isCompact ? "flex flex-col gap-6" : "grid grid-cols-1 lg:grid-cols-12 gap-8"}>
