@@ -141,7 +141,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
             is_read: true,
             read_by_operator_id: operatorId,
             read_by_operator_name: operatorName,
-          })
+          } as any)
           .in("id", unreadIds);
 
         if (updateError) {
