@@ -116,21 +116,35 @@ ${itemsList}
     try {
       const orderSummary = generateOrderSummary(data);
 
-      const response = await fetch('/api/whatsapp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'text',
-          phone: '5551999056903',
-          message: orderSummary
-        })
-      });
+      let result;
+      try {
+        const response = await fetch('/api/whatsapp/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'text',
+            phone: '5551999056903',
+            message: orderSummary
+          })
+        });
 
-      const result = await response.json();
-      
-      if (!response.ok || !result.success) {
-        console.error("Erro da API:", result);
-        throw new Error(result.error || 'Falha ao enviar');
+        const text = await response.text();
+        
+        if (!response.ok || !text.includes('{')) {
+          console.error("API Error:", response.status, text);
+          throw new Error(`Servidor retornou ${response.status}: ${text.slice(0, 100)}`);
+        }
+        
+        result = JSON.parse(text);
+        
+        if (!result.success) {
+          throw new Error(result.error || 'Falha ao enviar');
+        }
+      } catch (e) {
+        if (e instanceof SyntaxError || (e.message && e.message.includes('Unexpected token'))) {
+          throw new Error('API retornou erro, não JSON');
+        }
+        throw e;
       }
 
       clearCart();
