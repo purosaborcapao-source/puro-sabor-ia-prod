@@ -118,30 +118,35 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         .map((m: any) => m.id);
 
       if (unreadIds.length > 0) {
-        // Buscar dados do operador atual
-        const { data: { user } } = await supabase.auth.getUser();
-        const operatorId = user?.id;
+        // Usar getSession() (cache local, sem request de rede) para garantir
+        // que o operador esteja disponível mesmo no primeiro render
+        const { data: sessionData } = await supabase.auth.getSession();
+        const operatorId = sessionData.session?.user?.id ?? null;
 
         // Buscar nome do operador
-        let operatorName = null;
+        let operatorName: string | null = null;
         if (operatorId) {
           const { data: profileData } = await supabase
             .from("profiles")
             .select("name")
             .eq("id", operatorId)
             .single();
-          if (profileData) operatorName = profileData.name;
+          if (profileData) operatorName = (profileData as any).name ?? null;
         }
 
         // Atualizar mensagens com informações do operador que leu
-        await supabase
+        const { error: updateError } = await supabase
           .from("messages")
           .update({
             is_read: true,
-            read_by_operator_id: operatorId || null,
+            read_by_operator_id: operatorId,
             read_by_operator_name: operatorName,
           })
           .in("id", unreadIds);
+
+        if (updateError) {
+          console.error("❌ Erro ao marcar mensagens como lidas:", updateError);
+        }
       }
     } catch (err) {
       console.error("❌ Erro ao carregar mensagens:", err);
@@ -170,21 +175,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
 
     // Reset auto-assign flag quando customerId muda
     autoAssignDoneRef.current = false;
-
-    // Carregar operador atual
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("name")
-            .eq("id", user.id)
-            .single();
-          if (profile) {}
-        }
-      } catch (e) { /* ignore */ }
-    })();
 
     safeLoad();
 
