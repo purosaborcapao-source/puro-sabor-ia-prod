@@ -9,6 +9,7 @@ interface FieldWithPermissionProps {
   variant?: 'text' | 'currency' | 'number'
   disabled?: boolean
   error?: string
+  placeholder?: string
 }
 
 const formatCurrency = (value: number): string => {
@@ -29,7 +30,8 @@ export function FieldWithPermission({
   onEdit,
   variant = 'text',
   disabled = false,
-  error
+  error,
+  placeholder
 }: FieldWithPermissionProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(
@@ -113,6 +115,7 @@ export function FieldWithPermission({
               type={variant === 'number' ? 'number' : 'text'}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
+              placeholder={placeholder}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           )}
