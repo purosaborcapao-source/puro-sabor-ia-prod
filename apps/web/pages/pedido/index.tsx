@@ -116,7 +116,7 @@ ${itemsList}
     try {
       const orderSummary = generateOrderSummary(data);
 
-      await fetch('/api/whatsapp/send', {
+      const response = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,12 +126,19 @@ ${itemsList}
         })
       });
 
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        console.error("Erro da API:", result);
+        throw new Error(result.error || 'Falha ao enviar');
+      }
+
       clearCart();
       router.push('/pedido/confirmacao');
 
     } catch (error) {
-      console.error("Erro ao salvar pedido: ", error);
-      alert("Ocorreu um erro ao gerar seu pedido. Tente novamente ou chame no WhatsApp.");
+      console.error("Erro ao enviar pedido: ", error);
+      alert("Ocorreu um erro ao enviar. Você pode falar direto no WhatsApp: wa.me/5551999056903");
     } finally {
       setIsSubmitting(false);
     }
