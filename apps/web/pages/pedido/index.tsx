@@ -10,11 +10,9 @@ import { useProducts, Product } from '../../hooks/useProducts';
 import { useCart } from '../../hooks/useCart';
 import { CheckoutForm, CheckoutData } from '../../components/catalog/CheckoutForm';
 import { supabasePublic } from '../../lib/supabase-public';
-import { useRouter } from 'next/router';
 
 export default function PedidoPage() {
   const { productsByCategory, loading } = useProducts();
-  const router = useRouter();
 
   const [sinalPct, setSinalPct] = useState(0.3);
   const [activeCategory, setActiveCategory] = useState<string>('');
@@ -58,6 +56,38 @@ export default function PedidoPage() {
     window.scrollTo(0, 0);
   };
 
+  const generateOrderSummary = (data: CheckoutData): string => {
+    // Formatar o resumo no padrão que o process-message espera via regex
+    const itemsList = items
+      .map(item => {
+        // Quantidade com unidade (g ou x)
+        const qty = item.sale_unit === 'KG'
+          ? `${item.quantity}g`
+          : `${item.quantity}x`;
+
+        // Customizações (sabor, decoração, observações)
+        const customizations = item.customizations
+          ? ` • ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]
+              .filter(Boolean)
+              .join(' • ')}`
+          : '';
+
+        return `• ${qty} ${item.name}${customizations}`;
+      })
+      .join('\n');
+
+    // Formatar o valor total no padrão pt-BR (com vírgula)
+    const totalFormatted = total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const summary = `Gostaria de fazer um pedido:
+Data da Encomenda: ${data.date}
+Horário: ${data.time}
+${itemsList}
+Total: R$ ${totalFormatted}`;
+
+    return summary;
+  };
+
   const submitOrderToDB = async (data: CheckoutData) => {
     // Validate date: must not be in the past
     const today = new Date().toISOString().split('T')[0];
@@ -68,49 +98,21 @@ export default function PedidoPage() {
 
     setIsSubmitting(true);
     try {
-      // 2. Criar Pedido (Order)
-      // Ajuste o Date para bater com timestamp da entrega
-      const [year, month, day] = data.date.split('-');
-      const targetDate = new Date(`${year}-${month}-${day}T${data.time}:00`);
+      // Gerar resumo do pedido
+      const orderSummary = generateOrderSummary(data);
 
-      const { data: orderParams, error: orderErr } = await supabasePublic
-        .from('orders')
-        .insert({
-          customer_id: '550e8400-e29b-41d4-a716-446655440001',
-          number: `WEB-${Date.now()}`,
-          delivery_type: 'RETIRADA',
-          total: total,
-          sinal_valor: sinalValor,
-          payment_status: 'SINAL_PENDENTE',
-          delivery_date: targetDate.toISOString()
-        })
-        .select('id')
-        .single();
-        
-      if (orderErr) throw orderErr;
-      const orderId = orderParams.id;
+      // Redirecionar para WhatsApp com o resumo
+      // O número é da Puro Sabor: 5551999056903
+      const whatsappUrl = `https://wa.me/5551999056903?text=${encodeURIComponent(orderSummary)}`;
 
-      // 3. Criar Order Items
-      const orderItemsToInsert = items.map(item => ({
-        order_id: orderId,
-        product_id: item.productId,
-        quantity: item.quantity,
-        unit_price: item.price,
-        customizations: item.customizations || {}
-      }));
-
-      const { error: itemsErr } = await supabasePublic
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-      if (itemsErr) throw itemsErr;
-
-      // 4. Limpar e rotear!
+      // Limpar carrinho
       clearCart();
-      router.push(`/pedido/confirmacao/${orderId}`);
+
+      // Redirecionar para WhatsApp
+      window.location.href = whatsappUrl;
 
     } catch (error) {
-      console.error("Erro ao salvar pedido: ", error);
+      console.error("Erro ao gerar pedido: ", error);
       alert("Ocorreu um erro ao gerar seu pedido. Tente novamente ou chame no WhatsApp.");
     } finally {
       setIsSubmitting(false);

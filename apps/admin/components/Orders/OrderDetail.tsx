@@ -542,10 +542,12 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                       key={m.id}
                       onClick={async () => {
                         try {
-                          const supabaseToken = localStorage.getItem('supabase-auth-token')
-                          let token = ''
-                          if (supabaseToken) {
-                            token = JSON.parse(supabaseToken).access_token
+                          // Obter token via Supabase Auth
+                          const { data: { session } } = await supabase.auth.getSession()
+                          const token = session?.access_token || ''
+
+                          if (!token) {
+                            throw new Error('Sessão expirada. Faça login novamente.')
                           }
 
                           const response = await fetch('/api/payments', {
@@ -567,7 +569,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                             const err = await response.json()
                             throw new Error(err.error || 'Erro ao registrar pagamento')
                           }
-                          
+
                           setShowMiniEscolha(false);
                           setRefreshKey(k => k + 1);
                         } catch (err: any) {
