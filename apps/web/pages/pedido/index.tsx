@@ -123,9 +123,9 @@ ${itemsList}
           customer_id: 'guest-web-checkout',
           number: `WEB-${Date.now()}`,
           delivery_type: 'RETIRADA',
+          status: 'PENDENTE',
           total: total,
-          sinal_valor: sinalValor,
-          payment_status: 'SINAL_PENDENTE',
+          ai_processed: false,
           delivery_date: targetDate.toISOString()
         })
         .select('id')
