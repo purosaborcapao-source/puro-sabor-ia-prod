@@ -302,6 +302,7 @@ export type Database = {
         Row: {
           customizations: Json | null
           id: string
+          notes: string | null
           order_id: string
           product_id: string
           quantity: number
@@ -310,6 +311,7 @@ export type Database = {
         Insert: {
           customizations?: Json | null
           id?: string
+          notes?: string | null
           order_id: string
           product_id: string
           quantity?: number
@@ -318,6 +320,7 @@ export type Database = {
         Update: {
           customizations?: Json | null
           id?: string
+          notes?: string | null
           order_id?: string
           product_id?: string
           quantity?: number
@@ -364,6 +367,9 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
           total: number
           updated_at: string | null
+          total_received: number
+          balance_due: number
+          customer_obs: string | null
         }
         Insert: {
           address?: string | null
@@ -388,6 +394,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
           updated_at?: string | null
+          total_received?: number
+          balance_due?: number
+          customer_obs?: string | null
         }
         Update: {
           address?: string | null
@@ -412,6 +421,9 @@ export type Database = {
           status?: Database["public"]["Enums"]["order_status"]
           total?: number
           updated_at?: string | null
+          total_received?: number
+          balance_due?: number
+          customer_obs?: string | null
         }
         Relationships: [
           {
