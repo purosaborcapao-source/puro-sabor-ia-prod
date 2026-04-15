@@ -120,7 +120,7 @@ ${itemsList}
       const { data: orderParams, error: orderErr } = await supabasePublic
         .from('orders')
         .insert({
-          customer_id: 'guest-web-checkout',
+          customer_id: '00000000-0000-0000-0000-000000000000',
           number: `WEB-${Date.now()}`,
           delivery_type: 'RETIRADA',
           status: 'PENDENTE',
