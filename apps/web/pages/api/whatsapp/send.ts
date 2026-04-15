@@ -59,11 +59,17 @@ export default async function handler(
       body: JSON.stringify(zapiBody),
     });
 
-    const zapiData = await zapiResponse.json();
+    let zapiData;
+    try {
+      zapiData = await zapiResponse.json();
+    } catch (e) {
+      console.error("❌ Z-API non-JSON response:", await zapiResponse.text());
+      return res.status(400).json({ success: false, error: "Invalid Z-API response" });
+    }
 
     if (!zapiResponse.ok) {
       console.error("❌ Z-API Error:", zapiData);
-      return res.status(400).json({ success: false, error: "Failed to send message", details: zapiData });
+      return res.status(400).json({ success: false, error: zapiData?.error || "Failed to send", details: zapiData });
     }
 
     const { error: insertErr } = await supabase.from("messages").insert({
@@ -83,6 +89,7 @@ export default async function handler(
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
     console.error("🔥 API Error:", err);
-    return res.status(500).json({ success: false, error: "Internal error" });
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return res.status(500).json({ success: false, error: message });
   }
 }
