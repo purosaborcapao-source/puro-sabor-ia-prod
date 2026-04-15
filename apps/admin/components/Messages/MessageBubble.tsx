@@ -11,13 +11,15 @@ interface Message {
   created_at: string | null;
   payload?: any;
   sent_by_operator_name?: string | null;
+  assigned_operator_name?: string | null;
 }
 
 interface MessageBubbleProps {
   message: Message;
+  currentOperatorName?: string | null;
 }
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, currentOperatorName }) => {
   const isIncoming = message.direction === "INBOUND";
   const payload = message.payload as any;
   const intent = payload?.intent;
@@ -79,11 +81,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
                 {intent}
               </span>
             ) : null}
-            {!isIncoming && message.sent_by_operator_name ? (
+            {!isIncoming && (
               <span className="text-[8px] font-medium tracking-tight text-zinc-400 dark:text-zinc-500/40 uppercase">
-                {message.sent_by_operator_name.split(' ')[0]}
+                {message.sent_by_operator_name || currentOperatorName?.split(' ')[0] || 'Você'}
               </span>
-            ) : null}
+            )}
           </div>
 
           {/* Timestamp */}

@@ -33,6 +33,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const [isBlocked, setIsBlocked] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [currentOperatorName, setCurrentOperatorName] = useState<string | null>(null);
   const realtimeDisconnected = false;
   const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -66,9 +67,13 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       // Buscar status da conversa
       const { data: convData } = await supabase
         .from("conversations")
-        .select("status, last_inbound_at, is_blocked, assigned_operator_id")
+        .select("status, last_inbound_at, is_blocked, assigned_operator_id, profiles:assigned_operator_id(name)")
         .eq("customer_id", customerId)
         .single();
+
+      if (convData && (convData as any).profiles) {
+        setCurrentOperatorName(((convData as any).profiles as any).name);
+      }
 
       if (convData) {
         setConvStatus((convData as any).status as ConversationStatus);
@@ -141,6 +146,21 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
     // Reset auto-assign flag quando customerId muda
     autoAssignDoneRef.current = false;
 
+    // Carregar operador atual
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("name")
+            .eq("id", user.id)
+            .single();
+          if (profile) setCurrentOperatorName(profile.name);
+        }
+      } catch (e) { /* ignore */ }
+    })();
+
     safeLoad();
 
     const subMessages = supabase
@@ -185,30 +205,43 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   }, [customerId, loadMessages]);
 
 
-  // Auto-assignment em useEffect separado para evitar cascata
+  // Garantir que operador é atribuído ao abrir conversa
   useEffect(() => {
     if (!customerId || autoAssignDoneRef.current) return;
 
-    // Só executa após loadMessages ter carregado convStatus
-    if (convStatus === "NEW") {
-      autoAssignDoneRef.current = true;
-      isAutoAssigningRef.current = true;
+    autoAssignDoneRef.current = true;
+    isAutoAssigningRef.current = true;
 
-      (async () => {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            await supabase
-              .from("conversations")
-              .update({ status: "IN_PROGRESS", assigned_operator_id: user.id } as any)
-              .eq("customer_id", customerId);
-            setConvStatus("IN_PROGRESS");
-          }
-        } finally {
-          isAutoAssigningRef.current = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Primeiro, garantir que conversa existe (UPSERT)
+        await supabase
+          .from("conversations")
+          .upsert({
+            customer_id: customerId,
+            status: convStatus === "NEW" ? "IN_PROGRESS" : convStatus,
+            assigned_operator_id: user.id,
+            assigned_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: "customer_id" });
+
+        // Se era NEW, atualizar para IN_PROGRESS
+        if (convStatus === "NEW") {
+          await supabase
+            .from("conversations")
+            .update({ status: "IN_PROGRESS", assigned_operator_id: user.id, assigned_at: new Date().toISOString() })
+            .eq("customer_id", customerId);
+          setConvStatus("IN_PROGRESS");
         }
-      })();
-    }
+      } catch (err) {
+        console.error("❌ Erro ao atribuir operador:", err);
+      } finally {
+        isAutoAssigningRef.current = false;
+      }
+    })();
   }, [convStatus, customerId]);
 
   // Carregar mensagens mais antigas
@@ -425,7 +458,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           </div>
         ) : (
           messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble key={msg.id} message={msg} currentOperatorName={currentOperatorName} />
           ))
         )}
 
