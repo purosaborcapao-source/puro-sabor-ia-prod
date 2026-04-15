@@ -76,10 +76,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         .eq("customer_id", customerId)
         .single();
 
-      if (convData && (convData as any).profiles) {
-        setCurrentOperatorName(((convData as any).profiles as any).name);
-      }
-
       if (convData) {
         setConvStatus((convData as any).status as ConversationStatus);
         setLastInboundAt((convData as any).last_inbound_at);
@@ -171,7 +167,7 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
             .select("name")
             .eq("id", user.id)
             .single();
-          if (profile) setCurrentOperatorName(profile.name);
+          if (profile) {}
         }
       } catch (e) { /* ignore */ }
     })();
