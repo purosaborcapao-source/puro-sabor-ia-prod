@@ -121,7 +121,7 @@ ${itemsList}
       window.open(`https://wa.me/5551999056903?text=${encodedMessage}`, '_blank');
       
       clearCart();
-      router.push('/');
+      router.push('/pedido/confirmacao');
 
     } catch (error) {
       console.error("Erro ao gerar pedido: ", error);
