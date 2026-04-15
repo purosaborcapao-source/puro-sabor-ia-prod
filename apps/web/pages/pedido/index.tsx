@@ -104,7 +104,6 @@ ${itemsList}
   };
 
   const submitOrderToDB = async (data: CheckoutData) => {
-    // Validate date: must not be in the past
     const today = new Date().toISOString().split('T')[0];
     if (data.date < today) {
       alert('A data de retirada não pode ser no passado.');
@@ -113,59 +112,20 @@ ${itemsList}
 
     setIsSubmitting(true);
     try {
-      // 1. Criar Pedido (Order) no banco de dados
-      const [year, month, day] = data.date.split('-');
-      const targetDate = new Date(`${year}-${month}-${day}T${data.time}:00`);
-
-      const { data: orderParams, error: orderErr } = await supabasePublic
-        .from('orders')
-        .insert({
-          customer_id: '00000000-0000-0000-0000-000000000000',
-          number: `WEB-${Date.now()}`,
-          delivery_type: 'RETIRADA',
-          status: 'PENDENTE',
-          total: total,
-          ai_processed: false,
-          delivery_date: targetDate.toISOString()
-        })
-        .select('id')
-        .single();
-
-      if (orderErr) throw orderErr;
-      const orderId = orderParams.id;
-
-      // 2. Criar Order Items
-      const orderItemsToInsert = items.map(item => ({
-        order_id: orderId,
-        product_id: item.productId,
-        quantity: item.quantity,
-        unit_price: item.price,
-        customizations: item.customizations || {}
-      }));
-
-      const { error: itemsErr } = await supabasePublic
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-      if (itemsErr) throw itemsErr;
-
-      // 3. Gerar resumo e enviar via Z-API para Puro Sabor
       const orderSummary = generateOrderSummary(data);
 
-      // Enviar para Puro Sabor via Z-API (fire-and-forget)
-      fetch('/api/whatsapp/send', {
+      await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'text',
-          phone: '5551999056903', // Número fixo de Puro Sabor
+          phone: '5551999056903',
           message: orderSummary
         })
-      }).catch(err => console.error("Erro ao enviar WhatsApp:", err));
+      });
 
-      // 4. Limpar carrinho e redirecionar para confirmação
       clearCart();
-      router.push(`/pedido/confirmacao/${orderId}`);
+      router.push('/pedido/confirmacao');
 
     } catch (error) {
       console.error("Erro ao salvar pedido: ", error);
