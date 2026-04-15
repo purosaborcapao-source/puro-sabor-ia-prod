@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { CatalogHeader } from '../../components/catalog/CatalogHeader';
 import { CategoryTabs } from '../../components/catalog/CategoryTabs';
 import { ProductCard } from '../../components/catalog/ProductCard';
@@ -12,6 +13,7 @@ import { CheckoutForm, CheckoutData } from '../../components/catalog/CheckoutFor
 import { supabasePublic } from '../../lib/supabase-public';
 
 export default function PedidoPage() {
+  const router = useRouter();
   const { productsByCategory, loading } = useProducts();
 
   const [sinalPct, setSinalPct] = useState(0.3);
@@ -111,21 +113,62 @@ ${itemsList}
 
     setIsSubmitting(true);
     try {
-      // Gerar resumo do pedido
+      // 1. Criar Pedido (Order) no banco de dados
+      const [year, month, day] = data.date.split('-');
+      const targetDate = new Date(`${year}-${month}-${day}T${data.time}:00`);
+
+      const { data: orderParams, error: orderErr } = await supabasePublic
+        .from('orders')
+        .insert({
+          customer_id: 'guest-web-checkout',
+          number: `WEB-${Date.now()}`,
+          delivery_type: 'RETIRADA',
+          total: total,
+          sinal_valor: sinalValor,
+          payment_status: 'SINAL_PENDENTE',
+          delivery_date: targetDate.toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (orderErr) throw orderErr;
+      const orderId = orderParams.id;
+
+      // 2. Criar Order Items
+      const orderItemsToInsert = items.map(item => ({
+        order_id: orderId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        unit_price: item.price,
+        customizations: item.customizations || {}
+      }));
+
+      const { error: itemsErr } = await supabasePublic
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (itemsErr) throw itemsErr;
+
+      // 3. Gerar resumo e enviar via Z-API para Puro Sabor
       const orderSummary = generateOrderSummary(data);
 
-      // Redirecionar para WhatsApp com o resumo
-      // O número é da Puro Sabor: 5551999056903
-      const whatsappUrl = `https://wa.me/5551999056903?text=${encodeURIComponent(orderSummary)}`;
+      // Enviar para Puro Sabor via Z-API (fire-and-forget)
+      fetch('/api/whatsapp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'text',
+          phone: '5551999056903', // Número fixo de Puro Sabor
+          message: orderSummary
+        })
+      }).catch(err => console.error("Erro ao enviar WhatsApp:", err));
 
-      // Limpar carrinho
+      // 4. Limpar carrinho e redirecionar para confirmação
       clearCart();
-
-      // Redirecionar para WhatsApp
-      window.location.href = whatsappUrl;
+      router.push(`/pedido/confirmacao/${orderId}`);
 
     } catch (error) {
-      console.error("Erro ao gerar pedido: ", error);
+      console.error("Erro ao salvar pedido: ", error);
       alert("Ocorreu um erro ao gerar seu pedido. Tente novamente ou chame no WhatsApp.");
     } finally {
       setIsSubmitting(false);

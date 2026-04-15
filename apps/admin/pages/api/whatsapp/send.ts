@@ -103,47 +103,44 @@ export default async function handler(
 
     console.log("✅ [whatsapp/send] Z-API Delivery Success:", zapiData.messageId);
 
-    // Save outgoing message to Supabase
-    if (customerId) {
-      // Map API type to DB uppercase Enum
-      const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
+    // Save outgoing message to Supabase (com ou sem customerId)
+    const dbType = type.toUpperCase() as "TEXT" | "IMAGE" | "AUDIO" | "DOCUMENT";
 
-      let operatorName = null;
-      if (operatorId) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("name")
-          .eq("id", operatorId)
-          .single();
-        if (profileData) operatorName = profileData.name;
-      }
-
-      const { error: insertErr } = await supabase.from("messages").insert({
-        customer_id: customerId,
-        phone: normalizedPhone,
-        direction: "OUTBOUND",
-        type: dbType,
-        content: message || caption || `[${type}]`,
-        media_url: imageUrl || audioUrl || documentUrl || null,
-        payload: { zapi_message_id: zapiData.messageId },
-        zapi_status: "SENT",
-        external_id: zapiData.messageId ? `zapi:${zapiData.messageId}` : null,
-        sent_by_operator_id: operatorId || null,
-        sent_by_operator_name: operatorName,
-      });
-
-      if (insertErr) {
-        console.error("❌ [whatsapp/send] Supabase Save Error:", insertErr);
-        // Do not fail the request if Z-API succeeded
-        return res.status(200).json({ 
-          success: true, 
-          warning: "Message sent but failed to record in DB",
-          zapiId: zapiData.messageId 
-        });
-      }
-      
-      console.log("✅ [whatsapp/send] Persisted to Database");
+    let operatorName = null;
+    if (operatorId) {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("id", operatorId)
+        .single();
+      if (profileData) operatorName = profileData.name;
     }
+
+    const { error: insertErr } = await supabase.from("messages").insert({
+      customer_id: customerId || null,
+      phone: normalizedPhone,
+      direction: "OUTBOUND",
+      type: dbType,
+      content: message || caption || `[${type}]`,
+      media_url: imageUrl || audioUrl || documentUrl || null,
+      payload: { zapi_message_id: zapiData.messageId },
+      zapi_status: "SENT",
+      external_id: zapiData.messageId ? `zapi:${zapiData.messageId}` : null,
+      sent_by_operator_id: operatorId || null,
+      sent_by_operator_name: operatorName,
+    });
+
+    if (insertErr) {
+      console.error("❌ [whatsapp/send] Supabase Save Error:", insertErr);
+      // Do not fail the request if Z-API succeeded
+      return res.status(200).json({
+        success: true,
+        warning: "Message sent but failed to record in DB",
+        zapiId: zapiData.messageId
+      });
+    }
+
+    console.log("✅ [whatsapp/send] Persisted to Database");
 
     return res.status(200).json({ success: true, messageId: zapiData.messageId });
   } catch (err) {
