@@ -95,7 +95,6 @@ export default function PedidoPage() {
 ${itemsList}
 💰 Valor Total do Pedido: R$ ${totalFormatted}
 🔸 Sinal Sugerido: R$ ${sinalFormatted} (para confirmar a data/produção)
-📍 Tipo de Cesta: Retirada
 📅 Data: ${dateFormatted}
 🕐 Horário: ${data.time}`;
 

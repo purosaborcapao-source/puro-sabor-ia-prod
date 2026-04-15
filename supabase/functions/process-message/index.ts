@@ -234,6 +234,13 @@ REGRAS DE EXTRAÇÃO:
       console.log("🚀 [process-message] Criando rascunho de pedido...");
       // For web app orders, mark as PENDENTE (requires manual approval of the draft still? No wait, if matched all IDs, it could be PENDENTE. We keep it as RASCUNHO_IA so they review).
       await createDraftOrder(supabase, customer_id, parsed.extracted_data);
+
+      // Atualizar status da conversa para WAITING_ORDER para aparecer no Kanban
+      await supabase
+        .from('conversations')
+        .update({ status: 'WAITING_ORDER' })
+        .eq('customer_id', customer_id)
+        .catch((err) => console.warn("⚠️ Erro ao atualizar status conversa:", err));
     }
 
     // Gatilhos de notificação desativados conforme solicitação (IA Passiva)

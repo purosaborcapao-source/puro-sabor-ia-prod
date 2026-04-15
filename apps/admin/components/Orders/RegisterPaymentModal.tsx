@@ -17,7 +17,7 @@ export function RegisterPaymentModal({
   onClose,
   onSuccess
 }: RegisterPaymentModalProps) {
-  const [paymentType, setPaymentType] = useState<'SINAL' | 'SALDO' | 'PARCIAL' | 'ADIANTADO' | 'ENTREGA' | 'POSTERIOR'>('SINAL')
+  const [paymentType, setPaymentType] = useState<'SINAL' | 'SALDO' | 'ADIANTADO' | 'POSTERIOR'>('SINAL')
   const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'DEBITO' | 'CREDITO' | 'DINHEIRO'>('PIX')
   const [amount, setAmount] = useState('')
   const [notes, _setNotes] = useState('')
@@ -111,7 +111,7 @@ export function RegisterPaymentModal({
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: 'SINAL', label: 'Sinal' },
-                { id: 'ENTREGA', label: 'Na Entrega' },
+                { id: 'SALDO', label: 'Saldo' },
                 { id: 'ADIANTADO', label: 'Adiantado' },
                 { id: 'POSTERIOR', label: 'Posterior (C.C.)' },
               ].map((type) => (
