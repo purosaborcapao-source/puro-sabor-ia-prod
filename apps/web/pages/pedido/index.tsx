@@ -65,6 +65,10 @@ export default function PedidoPage() {
           ? `${item.quantity}g`
           : `${item.quantity}x`;
 
+        // Calcular valor total do item
+        const itemTotal = item.quantity * item.price;
+        const itemTotalFormatted = itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
         // Customizações (sabor, decoração, observações)
         const customizations = item.customizations
           ? ` • ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]
@@ -72,18 +76,28 @@ export default function PedidoPage() {
               .join(' • ')}`
           : '';
 
-        return `• ${qty} ${item.name}${customizations}`;
+        return `• ${qty} ${item.name} (R$ ${itemTotalFormatted})${customizations}`;
       })
       .join('\n');
 
     // Formatar o valor total no padrão pt-BR (com vírgula)
     const totalFormatted = total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    const summary = `Gostaria de fazer um pedido:
-Data da Encomenda: ${data.date}
-Horário: ${data.time}
+    // Calcular sinal (depósito sugerido)
+    const sinalAmount = total * sinalPct;
+    const sinalFormatted = sinalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Converter data de YYYY-MM-DD para DD/MM/YYYY
+    const [year, month, day] = data.date.split('-');
+    const dateFormatted = `${day}/${month}/${year}`;
+
+    const summary = `📄 Resumo dos Itens:
 ${itemsList}
-Total: R$ ${totalFormatted}`;
+💰 Valor Total do Pedido: R$ ${totalFormatted}
+🔸 Sinal Sugerido: R$ ${sinalFormatted} (para confirmar a data/produção)
+📍 Tipo de Cesta: Retirada
+📅 Data: ${dateFormatted}
+🕐 Horário: ${data.time}`;
 
     return summary;
   };

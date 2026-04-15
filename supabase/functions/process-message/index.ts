@@ -100,20 +100,26 @@ REGRAS DE EXTRAÇÃO:
     const aiPrompt = settings?.value ? String(settings.value) : basePrompt;
 
     // 5. Mapeamento Direto (Zero-AI) vs Claude API
-    const isWebAppOrder = text.includes("Gostaria de fazer um pedido:");
+    const isWebAppOrder = text.includes("📄 Resumo dos Itens:");
     let parsed: any;
 
     if (isWebAppOrder) {
       console.log("🛒 [process-message] Detectado pedido do Web App! Processamento Zero-AI.");
-      
-      const dateMatch = text.match(/Data da Encomenda:\s*(.+)/);
-      const timeMatch = text.match(/Horário:\s*(.+)/);
-      
-      const totalMatch = text.match(/Total:\s*R\$\s*([\d.,]+)/);
+
+      // Extrair data: "📅 Data: DD/MM/YYYY"
+      const dateMatch = text.match(/📅\s*Data:\s*(\d{2}\/\d{2}\/\d{4})/);
+      // Extrair horário: "🕐 Horário: HH:MM"
+      const timeMatch = text.match(/🕐\s*Horário:\s*(\d{2}:\d{2})/);
+
+      // Extrair total: "💰 Valor Total do Pedido: R$ XXX,XX"
+      const totalMatch = text.match(/💰\s*Valor Total do Pedido:\s*R\$\s*([\d.,]+)/);
       let orderTotal = 0;
       if (totalMatch) {
          orderTotal = parseFloat(totalMatch[1].replace(/\./g, '').replace(',', '.'));
       }
+
+      // Extrair sinal (opcional, para contexto)
+      const sinalMatch = text.match(/🔸\s*Sinal Sugerido:\s*R\$\s*([\d.,]+)/);
 
       const productLines = text.split('\n').filter(l => l.trim().startsWith('•'));
       const items = productLines.map(line => {
@@ -125,26 +131,34 @@ REGRAS DE EXTRAÇÃO:
         let quantity = parseFloat(qtyStr) || 1;
 
         const cleanLine = line.toLowerCase();
-        
+
+        // Extrair preço do item: "• XXx Nome (R$ XXX,XX)"
+        const priceMatch = line.match(/\(R\$\s*([\d.,]+)\)/);
+        let itemPrice = 0;
+        if (priceMatch) {
+          itemPrice = parseFloat(priceMatch[1].replace(/\./g, '').replace(',', '.'));
+        }
+
         // Tentar encontrar por ID curto primeiro [#abcd1234]
         const shortIdMatch = line.match(/\[#([a-f0-9]{8})\]/);
         let matchedProduct = null;
-        
+
         if (shortIdMatch) {
           const shortId = shortIdMatch[1];
           matchedProduct = products?.find(p => p.id.startsWith(shortId));
         }
-        
-        // Fallback por nome
+
+        // Fallback por nome (remover quantidade e preço para buscar)
         if (!matchedProduct) {
-          matchedProduct = products?.find(p => cleanLine.includes(p.name.toLowerCase().trim()));
+          const nameOnly = line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim();
+          matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
-        
+
         return {
           product_id: matchedProduct?.id,
-          product: matchedProduct?.name || line.replace(/•\s*([\d.,]+)(x|g|kg)?/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
+          product: matchedProduct?.name || line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
           quantity: quantity,
-          price: matchedProduct?.price || 0,
+          price: matchedProduct?.price || itemPrice || 0,
           observation: line.replace(/\[#([a-f0-9]{8})\]/g, '').trim()
         };
       });
@@ -154,20 +168,27 @@ REGRAS DE EXTRAÇÃO:
          orderTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       }
 
+      // Converter data de DD/MM/YYYY para YYYY-MM-DD
+      let deliveryDate = null;
+      if (dateMatch) {
+        const [day, month, year] = dateMatch[1].split('/');
+        deliveryDate = `${year}-${month}-${day}`;
+      }
+
       parsed = {
         intent: "NEW_ORDER",
         confidence: 1.0,
         extracted_data: {
           items,
           total: orderTotal,
-          delivery_date: dateMatch ? dateMatch[1].trim() : null,
-          delivery_time: timeMatch ? timeMatch[1].trim() : null
+          delivery_date: deliveryDate,
+          delivery_time: timeMatch ? timeMatch[1] : null
         },
         suggested_response: "Recebemos seu pedido pelo catálogo Web! Nossa equipe já está revisando as informações e confirmará em breve.",
         should_escalate: true
       };
 
-      console.log("✅ Resposta processada estruturalmente:", { itemsFound: items.length });
+      console.log("✅ Resposta processada estruturalmente:", { itemsFound: items.length, total: orderTotal, date: deliveryDate, time: timeMatch ? timeMatch[1] : null });
     } else {
       console.log("🔄 [process-message] Chamando Claude API...");
 
