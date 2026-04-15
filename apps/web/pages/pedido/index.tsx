@@ -62,23 +62,18 @@ export default function PedidoPage() {
     // Formatar o resumo no padrão que o process-message espera via regex
     const itemsList = items
       .map(item => {
-        // Quantidade com unidade (g ou x)
         const qty = item.sale_unit === 'KG'
           ? `${item.quantity}g`
           : `${item.quantity}x`;
-
-        // Calcular valor total do item
         const itemTotal = item.quantity * item.price;
         const itemTotalFormatted = itemTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-        // Customizações (sabor, decoração, observações)
         const customizations = item.customizations
-          ? ` • ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]
+          ? ` - ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]
               .filter(Boolean)
-              .join(' • ')}`
+              .join(' - ')}`
           : '';
-
-        return `• ${qty} ${item.name} (R$ ${itemTotalFormatted})${customizations}`;
+        const shortId = item.productId.slice(-8);
+        return `• ${qty} ${item.name} [#${shortId}]${customizations}`;
       })
       .join('\n');
 
@@ -94,13 +89,19 @@ export default function PedidoPage() {
     const dateFormatted = `${day}/${month}/${year}`;
 
     const notes = data.notes ? `\n📝 Observações: ${data.notes}` : '';
+    const sinalPctStr = sinalPct > 0 ? ` (~${Math.round(sinalPct * 100)}%)` : '';
 
-    const summary = `📄 Resumo dos Itens:
+    const summary = `Olá! Gostaria de fazer um pedido:
+
+📅 Data da Encomenda: ${dateFormatted}
+⏰ Horário: ${data.time}
+
 ${itemsList}
-💰 Valor Total do Pedido: R$ ${totalFormatted}
-🔸 Sinal Sugerido: R$ ${sinalFormatted} (para confirmar a data/produção)
-📅 Data: ${dateFormatted}
-🕐 Horário: ${data.time}${notes}`;
+
+Total: R$ ${totalFormatted}
+Sinal sugerido${sinalPctStr}: R$ ${sinalFormatted}
+
+Aguardo confirmação! 🍰${notes}`;
 
     return summary;
   };
@@ -115,10 +116,11 @@ ${itemsList}
     setIsSubmitting(true);
     try {
       const orderSummary = generateOrderSummary(data);
-      const encodedMessage = encodeURIComponent(orderSummary);
       
-      // Abre WhatsApp com resumo pronto para o cliente enviar
-      window.open(`https://wa.me/5551999056903?text=${encodedMessage}`, '_blank');
+      // Criar link WhatsApp
+      const waUrl = `https://wa.me/5551999056903?text=${encodeURIComponent(orderSummary)}`;
+      
+      window.open(waUrl, '_blank');
       
       clearCart();
       router.push('/pedido/confirmacao');
