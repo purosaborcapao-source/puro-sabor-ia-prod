@@ -140,8 +140,8 @@ ${itemsList}
         if (!result.success) {
           throw new Error(result.error || 'Falha ao enviar');
         }
-      } catch (e) {
-        if (e instanceof SyntaxError || (e.message && e.message.includes('Unexpected token'))) {
+      } catch (e: any) {
+        if (e instanceof SyntaxError || (e?.message?.includes('Unexpected token'))) {
           throw new Error('API retornou erro, não JSON');
         }
         throw e;
