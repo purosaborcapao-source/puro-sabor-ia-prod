@@ -20,8 +20,6 @@ interface MessageBubbleProps {
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
   const isIncoming = message.direction === "INBOUND";
-  const payload = message.payload as any;
-  const intent = payload?.intent;
 
   const formatTime = (dateString: string | null) => {
     if (!dateString) return "";
@@ -72,13 +70,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
         )}
 
         <div className="flex items-center justify-between gap-4 mt-1.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/50">
-          {/* Intent & Operador */}
+          {/* Operador */}
           <div className="flex items-center gap-1.5">
-            {isIncoming && intent ? (
-              <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                {intent}
-              </span>
-            ) : null}
             {isIncoming && message.read_by_operator_name && (
               <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
                 {message.read_by_operator_name.split(' ')[0]}
