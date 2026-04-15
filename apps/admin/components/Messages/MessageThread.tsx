@@ -224,22 +224,11 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        // Primeiro, garantir que conversa existe (UPSERT)
-        await supabase
-          .from("conversations")
-          .upsert({
-            customer_id: customerId,
-            status: convStatus === "NEW" ? "IN_PROGRESS" : convStatus,
-            assigned_operator_id: user.id,
-            assigned_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }, { onConflict: "customer_id" });
-
         // Se era NEW, atualizar para IN_PROGRESS
         if (convStatus === "NEW") {
           await supabase
             .from("conversations")
-            .update({ status: "IN_PROGRESS", assigned_operator_id: user.id, assigned_at: new Date().toISOString() })
+            .update({ status: "IN_PROGRESS" })
             .eq("customer_id", customerId);
           setConvStatus("IN_PROGRESS");
         }
