@@ -17,8 +17,9 @@ import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode } from 'lucide-
 interface OrderItem {
   quantity: number;
   unit_price: number;
-  product?: { name: string };
+  product?: { name: string; sale_unit?: string };
   notes?: string;
+  sale_unit?: string;
 }
 
 interface Order {
@@ -93,7 +94,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
             quantity,
             unit_price,
             notes,
-            products(name)
+            products(name, sale_unit)
           )
         `)
         .eq('id', orderId)
@@ -122,12 +123,13 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         delivery_fee: (orderData as any).delivery_fee || 0,
         total_received: (orderData as any).total_received || 0,
         balance_due: (orderData as any).balance_due || 0,
-        items: (orderData as any).order_items?.map((item: any) => ({
-           quantity: item.quantity,
-           unit_price: item.unit_price,
-           notes: item.notes,
-           product: item.products
-        })) || []
+items: (orderData as any).order_items?.map((item: any) => ({
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            notes: item.notes,
+            product: item.products,
+            sale_unit: item.products?.sale_unit
+          })) || []
       };
 
       setOrder(processedOrder);
@@ -223,9 +225,16 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
       const qrCodeUrl = getPixQrCodeUrl(pixPayloadStr);
 
       // Montagem da lista de produtos
-      const itemsList = order.items?.map(item => 
-        `• ${item.quantity}x ${item.product?.name} (R$ ${(item.quantity * item.unit_price).toFixed(2)})`
-      ).join('\n') || '';
+      const itemsList = order.items?.map(item => {
+        const isKG = item.sale_unit === 'KG'
+        const qtyDisplay = isKG
+          ? `${(item.quantity / 1000).toFixed(1).replace('.', ',')}kg`
+          : `${item.quantity}x`
+        const itemTotal = isKG
+          ? (item.quantity / 1000) * item.unit_price
+          : item.quantity * item.unit_price
+        return `• ${qtyDisplay} ${item.product?.name} (R$ ${itemTotal.toFixed(2)})`
+      }).join('\n') || '';
 
       const deliveryDt = order.delivery_date ? new Date(order.delivery_date) : null;
       const deliveryFormatted = deliveryDt

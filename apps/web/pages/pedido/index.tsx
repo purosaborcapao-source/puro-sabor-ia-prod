@@ -63,7 +63,7 @@ export default function PedidoPage() {
     const itemsList = items
       .map(item => {
         const qty = item.sale_unit === 'KG'
-          ? `${item.quantity}g`
+          ? `${(item.quantity / 1000).toFixed(1).replace('.', ',')}kg`
           : `${item.quantity}x`;
         const customizations = item.customizations
           ? ` - ${[item.customizations.flavor, item.customizations.decoration, item.customizations.notes]

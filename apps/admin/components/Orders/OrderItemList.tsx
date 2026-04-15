@@ -10,6 +10,7 @@ interface OrderItem {
   products: {
     name: string
     category: string
+    sale_unit: string
   }
 }
 
@@ -38,7 +39,7 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
           product_id,
           quantity,
           unit_price,
-          products:product_id(name, category)
+          products:product_id(name, category, sale_unit)
         `)
         .eq('order_id', orderId)
 
@@ -89,11 +90,20 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
         <Hash className="w-3 h-3" /> Itens do Pedido ({items.length})
       </h3>
       
-      {items.map((item) => (
+      {items.map((item) => {
+        const isKG = item.products?.sale_unit === 'KG'
+        const qtyDisplay = isKG
+          ? `${(item.quantity / 1000).toFixed(1).replace('.', ',')}kg`
+          : `${item.quantity}x`
+        const itemTotal = isKG
+          ? (item.quantity / 1000) * item.unit_price
+          : item.quantity * item.unit_price
+
+        return (
         <div key={item.id} className="flex items-center justify-between p-3 bg-white dark:bg-[#0F0F0F] border border-gray-200 dark:border-gray-800 rounded-xl group hover:border-blue-500/30 transition-all">
           <div className="flex items-center gap-4">
             <div className="w-8 h-8 rounded bg-gray-50 dark:bg-gray-900 flex items-center justify-center text-[10px] font-black text-gray-500">
-              {item.quantity}x
+              {qtyDisplay}
             </div>
             <div>
               <p className="text-[10px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest mb-0.5">
@@ -108,10 +118,10 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
           <div className="flex items-center gap-6">
             <div className="text-right">
               <p className="text-xs font-black text-gray-900 dark:text-white">
-                {(item.quantity * item.unit_price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                {itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
               <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight">
-                {item.unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} un
+                {item.unit_price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/{isKG ? 'kg' : 'un'}
               </p>
             </div>
             <button 
@@ -122,7 +132,7 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
             </button>
           </div>
         </div>
-      ))}
+      )})}
     </div>
   )
 }
