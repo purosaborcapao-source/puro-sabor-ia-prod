@@ -144,28 +144,38 @@ REGRAS DE EXTRAÇÃO:
         // Tentar encontrar por ID curto primeiro [#abcd1234]
         const shortIdMatch = line.match(/\[#([a-f0-9]{8})\]/);
         let matchedProduct = null;
+        let customization = '';
 
         if (shortIdMatch) {
           const shortId = shortIdMatch[1];
           matchedProduct = products?.find(p => p.id.startsWith(shortId));
+          
+          // Extrair customização usando o ID como delimitador
+          // Ex: • 2000g Produto [#ID] - Açúcar -> "Açúcar"
+          const parts = line.split(shortIdMatch[0]);
+          if (parts.length > 1) {
+            customization = parts[1].replace(/^\s*[-:]\s*/, '').trim();
+          }
         }
 
-        // Fallback por nome
+        // Fallback por nome se não houver ID ou se a customização não foi capturada pelo ID
         if (!matchedProduct) {
           const nameOnly = line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim();
           matchedProduct = products?.find(p => nameOnly.toLowerCase().includes(p.name.toLowerCase().trim()));
         }
-
-        // Extrair customização (texto depois do nome antes do [#XXXX])
-        const customMatch = line.match(/\s*-\s*(.+?)\s*\[#/);
-        const customText = customMatch ? customMatch[1].trim() : '';
+        
+        // Se ainda não temos customização, tentamos o padrão antigo mantendo a limpeza
+        if (!customization) {
+           const customMatch = line.match(/\s*[-:]\s*(.+?)\s*(\[#|$)/);
+           customization = customMatch ? customMatch[1].trim() : '';
+        }
         
         return {
           product_id: matchedProduct?.id,
           product: matchedProduct?.name || line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
           quantity: quantity,
           price: matchedProduct?.price || itemPrice || 0,
-          observation: customText || line.replace(/\[#([a-f0-9]{8})\]/g, '').trim()
+          observation: customization
         };
       });
 
@@ -405,7 +415,8 @@ const orderNotes = extractedData?.delivery_time
         payment_status: "SINAL_PENDENTE",
         ai_processed: true,
         sinal_confirmado: false,
-        notes: fullNotes,
+        customer_obs: extractedData?.observation || null,
+        notes: orderNotes ? `${orderNotes}\nCriado via Catálogo Web.` : 'Criado via Catálogo Web.',
         total: extractedData?.total || 0, 
       })
       .select()
@@ -431,7 +442,7 @@ const orderNotes = extractedData?.delivery_time
              product_id: item.product_id,
              quantity: item.quantity || 1,
              unit_price: item.price || 0,
-             customizations: { notes: item.observation }
+             notes: item.observation
            });
          } else {
              console.warn(`⚠️ produto_id não encontrado no item: ${JSON.stringify(item)}`);

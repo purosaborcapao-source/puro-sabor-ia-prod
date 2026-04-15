@@ -344,6 +344,7 @@ export default function NewOrderPage() {
         product_id: item.product_id,
         quantity: item.quantity,
         unit_price: item.unit_price,
+        notes: item.notes,
       }));
 
       const { error: itemsError } = await supabase

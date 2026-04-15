@@ -12,6 +12,7 @@ interface OrderItem {
     category: string
     sale_unit: string
   }
+  notes?: string
 }
 
 interface OrderItemListProps {
@@ -39,6 +40,7 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
           product_id,
           quantity,
           unit_price,
+          notes,
           products:product_id(name, category, sale_unit)
         `)
         .eq('order_id', orderId)
@@ -112,6 +114,11 @@ export function OrderItemList({ orderId, refreshKey, onItemRemoved }: OrderItemL
               <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">
                 {item.products?.name}
               </h4>
+              {item.notes && (
+                <p className="text-[11px] font-medium text-orange-600 dark:text-orange-400 mt-0.5 italic">
+                  obs: {item.notes}
+                </p>
+              )}
             </div>
           </div>
           

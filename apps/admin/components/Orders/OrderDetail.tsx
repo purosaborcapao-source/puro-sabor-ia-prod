@@ -36,6 +36,7 @@ interface Order {
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   total: number;
   notes?: string;
+  customer_obs?: string;
   created_at: string | null;
   discount?: number;
   discount_reason?: string;
@@ -428,10 +429,21 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     </button>
                   )}
                 </div>
+                {/* Customer Observations */}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <FieldWithPermission
+                    label="📝 Observações do Cliente"
+                    value={order.customer_obs || ''}
+                    canEdit={true} // Todos podem ver/editar as notas do cliente
+                    onEdit={(val) => handleUpdateOrderField('customer_obs', val)}
+                    placeholder="Ex: Sem merengue, embalagem para presente..."
+                  />
+                </div>
+
                 {/* Notes Edit */}
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                   <FieldWithPermission
-                    label="Notas / Resumo Visível"
+                    label="Resumo / Notas Internas"
                     value={order.notes || ''}
                     canEdit={canEditFinancial} // reusando nível de acesso
                     onEdit={(val) => handleUpdateOrderField('notes', val)}
