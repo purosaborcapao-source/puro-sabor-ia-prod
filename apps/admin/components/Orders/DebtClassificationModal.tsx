@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, AlertCircle, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
+import { X, AlertCircle, CreditCard, Clock, CheckCircle2, BookUser } from 'lucide-react';
 import { supabase } from '@atendimento-ia/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -17,7 +17,7 @@ export function DebtClassificationModal({
   onSuccess
 }: DebtClassificationModalProps) {
   const { user } = useAuth();
-  const [mode, setMode] = useState<'PAYMENT' | 'DEBT'>('PAYMENT');
+  const [mode, setMode] = useState<'PAYMENT' | 'DEBT' | 'CC'>('PAYMENT');
   const [classification, setClassification] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -117,6 +117,35 @@ export function DebtClassificationModal({
     }
   };
 
+  const handleSendToContaCorrente = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { error: updateErr } = await supabase
+        .from('orders')
+        .update({ status: 'ENTREGUE', payment_status: 'CONTA_CORRENTE', conta_corrente: true } as any)
+        .eq('id', orderId);
+
+      if (updateErr) throw updateErr;
+
+      await supabase.from('order_changes').insert({
+        order_id: orderId,
+        changed_by: user?.id,
+        field: 'status',
+        old_value: 'CONFIRMADO',
+        new_value: 'ENTREGUE',
+        reason: 'Finalização com saldo lançado em Conta Corrente do cliente'
+      });
+
+      onSuccess('CONTA_CORRENTE');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar para C.C.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
       <div className="bg-white dark:bg-[#0D0D0D] border border-gray-200 dark:border-gray-800 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
@@ -142,7 +171,7 @@ export function DebtClassificationModal({
           <button
             onClick={() => setMode('PAYMENT')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-              mode === 'PAYMENT' 
+              mode === 'PAYMENT'
                 ? 'bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
@@ -152,12 +181,22 @@ export function DebtClassificationModal({
           <button
             onClick={() => setMode('DEBT')}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
-              mode === 'DEBT' 
+              mode === 'DEBT'
                 ? 'bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400 shadow-sm'
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <Clock className="w-3.5 h-3.5" /> Deixar Pendente
+          </button>
+          <button
+            onClick={() => setMode('CC')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all ${
+              mode === 'CC'
+                ? 'bg-white dark:bg-gray-800 text-purple-600 dark:text-purple-400 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <BookUser className="w-3.5 h-3.5" /> C.C.
           </button>
         </div>
 
@@ -220,6 +259,20 @@ export function DebtClassificationModal({
             </div>
           )}
 
+          {mode === 'CC' && (
+            <div className="space-y-4 animate-in slide-in-from-right-4 duration-200">
+              <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl flex items-start gap-3">
+                <BookUser className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-purple-900 dark:text-purple-200">Lançar em Conta Corrente</p>
+                  <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">
+                    O saldo de <strong>{balanceDue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong> será registrado na conta corrente do cliente. O pedido será marcado como ENTREGUE.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
               <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -236,11 +289,13 @@ export function DebtClassificationModal({
               Cancelar
             </button>
             <button
-              onClick={mode === 'PAYMENT' ? handleRegisterFullPayment : handleClassifyDebt}
+              onClick={mode === 'PAYMENT' ? handleRegisterFullPayment : mode === 'CC' ? handleSendToContaCorrente : handleClassifyDebt}
               disabled={loading}
               className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-bold text-white rounded-xl transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                mode === 'PAYMENT' 
-                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20' 
+                mode === 'PAYMENT'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/20'
+                  : mode === 'CC'
+                  ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-900/20'
                   : 'bg-orange-600 hover:bg-orange-700 shadow-orange-900/20'
               }`}
             >
@@ -249,7 +304,7 @@ export function DebtClassificationModal({
               ) : (
                 <CheckCircle2 className="w-4 h-4" />
               )}
-              {mode === 'PAYMENT' ? 'Confirmar Recebimento' : 'Confirmar Pendência'}
+              {mode === 'PAYMENT' ? 'Confirmar Recebimento' : mode === 'CC' ? 'Lançar em C.C.' : 'Confirmar Pendência'}
             </button>
           </div>
         </div>

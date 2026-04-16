@@ -38,7 +38,7 @@ export function Sidebar() {
       label: 'Produtos',
       href: '/dashboard/products',
       icon: '🍰',
-      roles: ['ADMIN', 'GERENTE']
+      roles: ['ADMIN', 'GERENTE', 'ATENDENTE', 'PRODUTOR']
     },
     {
       label: 'Usuários',
