@@ -128,7 +128,9 @@ REGRAS DE EXTRAÇÃO:
       const productLines = text.split('\n').filter(l => l.trim().startsWith('•'));
       const items = productLines.map(line => {
         let qtyStr = "1";
-        const matchQty = line.match(/•\s*([\d.,]+)(x|g|kg)?/);
+        const matchQty = line.match(/•\s*([\d.,]+)(x|g|kg)?/i);
+        let unit = matchQty ? (matchQty[2] || '').toLowerCase() : null;
+        
         if (matchQty) {
           qtyStr = matchQty[1].replace(',', '.');
         }
@@ -170,18 +172,34 @@ REGRAS DE EXTRAÇÃO:
            customization = customMatch ? customMatch[1].trim() : '';
         }
         
+        // Normalização de Unidades para Gramas (se KG)
+        const isKGProduct = matchedProduct?.sale_unit === 'KG' || unit === 'kg' || unit === 'g';
+        if (isKGProduct) {
+          if (unit === 'kg' || (!unit && quantity < 50)) {
+            // Se for kg EXPLICITAMENTE ou se não houver unidade mas o número for baixo (ex: 1,5), assume que são Quilos e converte para Gramas
+            quantity = Math.round(quantity * 1000);
+          }
+          // Se for 'g', a quantidade já está em gramas, mantemos
+        }
+
         return {
           product_id: matchedProduct?.id,
           product: matchedProduct?.name || line.replace(/•\s*[\d.,]+(x|g|kg)?\s*/g, '').replace(/\(R\$\s*[\d.,]+\)/g, '').replace(/\[#([a-f0-9]{8})\]/g, '').trim(),
           quantity: quantity,
           price: matchedProduct?.price || itemPrice || 0,
+          unit_type: matchedProduct?.sale_unit || (isKGProduct ? 'KG' : 'UNIDADE'),
           observation: customization
         };
       });
 
       // If total was not found via regex, calculate from matched prices
       if (orderTotal === 0 && items.length > 0) {
-         orderTotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+         orderTotal = items.reduce((acc, item: any) => {
+           const price = item.price || 0;
+           const qty = item.quantity || 0;
+           // Se for KG, quantity está em gramas, então divide por 1000
+           return acc + (item.unit_type === 'KG' ? (qty / 1000) * price : qty * price);
+         }, 0);
       }
 
       // Converter data de DD/MM/YYYY para YYYY-MM-DD
