@@ -13,7 +13,7 @@ import { ProductCatalogDrawer } from './ProductCatalogDrawer';
 import { ReferenceImages } from './ReferenceImages';
 import { ChangeHistory } from './ChangeHistory';
 import { generatePixPayload, getPixQrCodeUrl } from '../../utils/pix';
-import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode, CheckCircle2, AlertTriangle, DollarSign, BookUser } from 'lucide-react';
 
 interface OrderItem {
   quantity: number;
@@ -203,6 +203,31 @@ items: (orderData as any).order_items?.map((item: any) => ({
       setRefreshKey(prev => prev + 1);
     } catch (err: any) {
       alert('Erro ao atualizar campo: ' + err.message);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleMoveToContaCorrente = async () => {
+    if (!order) return;
+    try {
+      setIsUpdatingStatus(true);
+      const { error } = await supabase
+        .from('orders')
+        .update({ payment_status: 'CONTA_CORRENTE', conta_corrente: true } as any)
+        .eq('id', orderId);
+      if (error) throw error;
+      await supabase.from('order_changes').insert({
+        order_id: orderId,
+        changed_by: user?.id,
+        field: 'payment_status',
+        old_value: order.payment_status,
+        new_value: 'CONTA_CORRENTE',
+        reason: 'Saldo pendente enviado para Conta Corrente do cliente'
+      });
+      setRefreshKey(prev => prev + 1);
+    } catch (err: any) {
+      alert('Erro ao enviar para C.C.: ' + err.message);
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -492,6 +517,29 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                          <option value="ENTREGUE">✅ ENTREGUE</option>
                          <option value="CANCELADO">❌ CANCELADO</option>
                       </select>
+
+                      {/* Ações de pagamento para ENTREGUE com saldo pendente */}
+                      {order.status === 'ENTREGUE' &&
+                        (order.balance_due ?? 0) > 0.01 &&
+                        order.payment_status !== 'QUITADO' &&
+                        order.payment_status !== 'CONTA_CORRENTE' && (
+                        <>
+                          <button
+                            onClick={() => setShowPaymentModal(true)}
+                            disabled={isUpdatingStatus}
+                            className="flex-1 min-w-[140px] px-4 py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                          >
+                            <DollarSign className="w-4 h-4" /> Receber Saldo
+                          </button>
+                          <button
+                            onClick={handleMoveToContaCorrente}
+                            disabled={isUpdatingStatus}
+                            className="flex-1 min-w-[140px] px-4 py-3 bg-purple-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg flex items-center justify-center gap-2"
+                          >
+                            <BookUser className="w-4 h-4" /> Enviar p/ C.C.
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

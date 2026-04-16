@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@atendimento-ia/supabase'
 import Link from 'next/link'
-import { ArrowLeftIcon, Phone, ShoppingBag, MessageCircle } from 'lucide-react'
+import { ArrowLeftIcon, Phone, ShoppingBag, MessageCircle, Pencil, Check, X } from 'lucide-react'
 import { WhatsAppPanel } from '@/components/Orders/WhatsAppPanel'
 
 interface Customer {
@@ -29,6 +29,8 @@ export default function CustomerDetailPage() {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [editingField, setEditingField] = useState<{ field: 'name' | 'phone'; value: string } | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -73,6 +75,31 @@ export default function CustomerDetailPage() {
     }
   }, [id, loadCustomerData])
 
+  const saveField = async () => {
+    if (!editingField || !customer) return
+    const value = editingField.value.trim()
+    if (!value) { setEditingField(null); return }
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('customers')
+        .update({ [editingField.field]: value } as any)
+        .eq('id', customer.id)
+      if (error) throw error
+      setCustomer({ ...customer, [editingField.field]: value })
+      setEditingField(null)
+    } catch (err: any) {
+      alert('Erro ao salvar: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') saveField()
+    if (e.key === 'Escape') setEditingField(null)
+  }
+
   if (loading || authLoading || !customer) {
     return <div className="p-8 text-center text-gray-500 uppercase font-black text-[10px] tracking-widest">Acessando registros...</div>
   }
@@ -92,8 +119,31 @@ export default function CustomerDetailPage() {
               <ArrowLeftIcon className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-sm font-black tracking-[0.2em] text-gray-900 dark:text-white uppercase">
-                Customer Profile: <span className="text-emerald-600 dark:text-emerald-500">{customer.name}</span>
+              <h1 className="text-sm font-black tracking-[0.2em] text-gray-900 dark:text-white uppercase flex items-center gap-2 flex-wrap">
+                Customer Profile:&nbsp;
+                {editingField?.field === 'name' ? (
+                  <span className="flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={editingField.value}
+                      onChange={e => setEditingField({ ...editingField, value: e.target.value })}
+                      onKeyDown={handleKeyDown}
+                      onBlur={saveField}
+                      disabled={saving}
+                      className="text-emerald-600 dark:text-emerald-500 bg-transparent border-b-2 border-emerald-500 outline-none w-48 font-black tracking-[0.2em] uppercase"
+                    />
+                    <button onClick={saveField} disabled={saving} className="p-1 text-emerald-600 hover:text-emerald-700"><Check className="w-4 h-4" /></button>
+                    <button onClick={() => setEditingField(null)} className="p-1 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setEditingField({ field: 'name', value: customer.name })}
+                    className="text-emerald-600 dark:text-emerald-500 flex items-center gap-1.5 group/name"
+                  >
+                    {customer.name}
+                    <Pencil className="w-3 h-3 opacity-0 group-hover/name:opacity-60 transition-opacity" />
+                  </button>
+                )}
               </h1>
             </div>
           </div>
@@ -129,8 +179,31 @@ export default function CustomerDetailPage() {
                 <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                   <Phone className="w-3 h-3" /> Detalhes de Contato
                 </h2>
-                <div className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                   WhatsApp: <span className="text-emerald-500 font-mono tracking-tighter">{customer.phone}</span>
+                <div className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2 group/phone">
+                  WhatsApp:&nbsp;
+                  {editingField?.field === 'phone' ? (
+                    <span className="flex items-center gap-1">
+                      <input
+                        autoFocus
+                        value={editingField.value}
+                        onChange={e => setEditingField({ ...editingField, value: e.target.value })}
+                        onKeyDown={handleKeyDown}
+                        onBlur={saveField}
+                        disabled={saving}
+                        className="text-emerald-500 font-mono tracking-tighter bg-transparent border-b-2 border-emerald-500 outline-none w-40"
+                      />
+                      <button onClick={saveField} disabled={saving} className="p-1 text-emerald-600 hover:text-emerald-700"><Check className="w-4 h-4" /></button>
+                      <button onClick={() => setEditingField(null)} className="p-1 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setEditingField({ field: 'phone', value: customer.phone })}
+                      className="text-emerald-500 font-mono tracking-tighter flex items-center gap-1.5"
+                    >
+                      {customer.phone}
+                      <Pencil className="w-3 h-3 opacity-0 group-hover/phone:opacity-60 transition-opacity" />
+                    </button>
+                  )}
                 </div>
               </div>
 

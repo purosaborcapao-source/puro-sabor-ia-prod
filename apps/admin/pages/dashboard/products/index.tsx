@@ -22,7 +22,7 @@ export default function ProductsPage() {
     return null
   }
 
-  const canEdit = ['ADMIN', 'GERENTE'].includes(profile.role)
+  const canEdit = true
 
   return (
     <>

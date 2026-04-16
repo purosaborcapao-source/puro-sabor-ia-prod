@@ -13,11 +13,6 @@ export default function NewProductPage() {
       router.push('/auth/login')
     }
 
-    if (!loading && user && profile) {
-      if (!['ADMIN', 'GERENTE'].includes(profile.role)) {
-        router.push('/dashboard/products')
-      }
-    }
   }, [user, profile, loading, router])
 
   if (loading || !user || !profile) {

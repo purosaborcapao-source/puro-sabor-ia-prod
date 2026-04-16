@@ -21,11 +21,6 @@ export default function EditProductPage() {
       router.push('/auth/login')
     }
 
-    if (!loading && user && profile) {
-      if (!['ADMIN', 'GERENTE'].includes(profile.role)) {
-        router.push('/dashboard/products')
-      }
-    }
   }, [user, profile, loading, router])
 
   useEffect(() => {
