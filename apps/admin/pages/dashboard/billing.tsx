@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@atendimento-ia/supabase'
-import { ArrowLeftIcon, Search, Filter, AlertTriangle, MessageCircle, ChevronRight, DollarSign, Calendar, User } from 'lucide-react'
+import { ArrowLeftIcon, Search, Filter, AlertTriangle, MessageCircle, ChevronRight, DollarSign, Calendar, User, Loader2 } from 'lucide-react'
 import { PaymentStatusBadge } from '@/components/Orders/PaymentStatusBadge'
 
 interface OrderDebt {
@@ -234,7 +234,7 @@ export default function BillingPage() {
                           </span>
                           {order.debt_notes && (
                             <p className="text-[10px] text-gray-500 italic max-w-[200px] truncate" title={order.debt_notes}>
-                              "{order.debt_notes}"
+                            &quot;{order.debt_notes}&quot;
                             </p>
                           )}
                         </div>

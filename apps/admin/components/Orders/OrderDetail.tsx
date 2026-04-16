@@ -552,7 +552,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     </p>
                     {(order as any).debt_notes && (
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 italic mt-1 border-t border-red-100 dark:border-red-900/30 pt-1">
-                        "{(order as any).debt_notes}"
+                      &quot;{(order as any).debt_notes}&quot;
                       </p>
                     )}
                   </div>
@@ -573,7 +573,6 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
               </div>
             </div>
           </div>
-        </div>
 
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <OrderItemList orderId={orderId} refreshKey={refreshKey} onItemRemoved={() => setRefreshKey(k => k + 1)} />
@@ -737,7 +736,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
           <div className="bg-white dark:bg-gray-800 rounded-xl max-w-sm w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Confirma a produção?</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Qual o valor sugerido do sinal a ser cobrado? (Será enviado no resumo com chave copiável do PIX e QR Code).
+              Qual o valor sugerido do sinal a ser cobrado&quest; &lpar;Será enviado no resumo com chave copiável do PIX e QR Code&rpar;.
             </p>
             <div className="relative mb-6">
               <span className="absolute left-3 top-2.5 text-gray-500">R$</span>
