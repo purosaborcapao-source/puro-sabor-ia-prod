@@ -5,6 +5,7 @@ import { useChatPresence } from '@/contexts/ChatPresenceContext';
 import { FieldWithPermission } from '@/components/UI/FieldWithPermission';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { RegisterPaymentModal } from './RegisterPaymentModal';
+import { DebtClassificationModal } from './DebtClassificationModal';
 import { WhatsAppPanel } from './WhatsAppPanel';
 import { AISuggestionPanel } from './AISuggestionPanel';
 import { OrderItemList } from './OrderItemList';
@@ -12,7 +13,7 @@ import { ProductCatalogDrawer } from './ProductCatalogDrawer';
 import { ReferenceImages } from './ReferenceImages';
 import { ChangeHistory } from './ChangeHistory';
 import { generatePixPayload, getPixQrCodeUrl } from '../../utils/pix';
-import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode, CreditCard, Clock, CheckCircle2, AlertTriangle, StickyNote } from 'lucide-react';
 
 interface OrderItem {
   quantity: number;
@@ -72,6 +73,8 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [showMiniEscolha, setShowMiniEscolha] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [sugestedSinal, setSugestedSinal] = useState('');
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
@@ -165,16 +168,40 @@ items: (orderData as any).order_items?.map((item: any) => ({
   };
 
   const handleUpdateOrderField = async (field: keyof Order, value: any) => {
+    // Interceptação para Status ENTREGUE
+    if (field === 'status' && value === 'ENTREGUE' && order && order.balance_due > 0) {
+      setIsDebtModalOpen(true);
+      return;
+    }
+
     try {
+      setIsUpdatingStatus(true);
+      const oldStatus = order?.status;
+
       const { error } = await supabase
         .from('orders')
         .update({ [field]: value } as any)
         .eq('id', orderId);
       
       if (error) throw error;
+
+      // Auditoria: Documentar mudança de status
+      if (field === 'status' && oldStatus !== value) {
+        await supabase.from('order_changes').insert({
+          order_id: orderId,
+          changed_by: user?.id,
+          field: 'status',
+          old_value: oldStatus,
+          new_value: value,
+          reason: `Alteração manual de status na página de detalhes`
+        });
+      }
+
       setRefreshKey(prev => prev + 1);
     } catch (err: any) {
       alert('Erro ao atualizar campo: ' + err.message);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -408,15 +435,27 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     — {order.delivery_type}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800' : 
-                    order.status === 'CONFIRMADO' ? 'bg-blue-100 text-blue-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {order.status}
-                  </span>
+                <div className="relative group">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Status do Pedido</p>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={order.status}
+                      disabled={isUpdatingStatus}
+                      onChange={(e) => handleUpdateOrderField('status', e.target.value)}
+                      className={`px-3 py-1 rounded-full text-xs font-bold border outline-none transition-all cursor-pointer disabled:opacity-50 ${
+                        order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' : 
+                        order.status === 'CONFIRMADO' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                        order.status === 'CANCELADO' ? 'bg-red-100 text-red-800 border-red-200' :
+                        'bg-yellow-100 text-yellow-800 border-yellow-200'
+                      }`}
+                    >
+                      <option value="PENDENTE">🟡 PENDENTE</option>
+                      <option value="CONFIRMADO">🔵 CONFIRMADO</option>
+                      <option value="ENTREGUE">✅ ENTREGUE</option>
+                      <option value="CANCELADO">❌ CANCELADO</option>
+                    </select>
+                    {isUpdatingStatus && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                  </div>
                   {order.status === 'PENDENTE' && (
                     <button
                       onClick={() => {
@@ -499,6 +538,25 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     {((order.total || 0) + (order.delivery_fee || 0) - (order.discount || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </span>
                 </div>
+
+                </div>
+
+                {order.balance_due > 0 && (order as any).debt_classification && (
+                  <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg mt-4">
+                    <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Pendência Financeira</span>
+                    </div>
+                    <p className="text-xs font-bold text-red-900 dark:text-red-200">
+                      {(order as any).debt_classification.replace(/_/g, ' ')}
+                    </p>
+                    {(order as any).debt_notes && (
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 italic mt-1 border-t border-red-100 dark:border-red-900/30 pt-1">
+                        "{(order as any).debt_notes}"
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Total Recebido</p>
@@ -723,6 +781,17 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
             </div>
           </div>
         </div>
+      )}
+      {isDebtModalOpen && order && (
+        <DebtClassificationModal
+          orderId={order.id}
+          balanceDue={order.balance_due || 0}
+          onClose={() => setIsDebtModalOpen(false)}
+          onSuccess={() => {
+            setIsDebtModalOpen(false);
+            setRefreshKey(k => k + 1);
+          }}
+        />
       )}
     </div>
   );

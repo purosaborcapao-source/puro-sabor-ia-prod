@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, AlertCircle } from 'lucide-react'
+import { X, AlertCircle, Loader2 } from 'lucide-react'
 import { supabase } from '@atendimento-ia/supabase'
 
 interface RegisterPaymentModalProps {
@@ -203,9 +203,14 @@ export function RegisterPaymentModal({
             <button
               type="submit"
               disabled={isLoading || !amount}
-              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 font-medium"
             >
-              {isLoading ? 'Registrando...' : 'Registrar'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Registrando...
+                </>
+              ) : 'Registrar'}
             </button>
           </div>
         </form>
