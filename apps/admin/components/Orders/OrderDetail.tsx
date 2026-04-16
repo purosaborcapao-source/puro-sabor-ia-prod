@@ -76,6 +76,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
   const [isDebtModalOpen, setIsDebtModalOpen] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [sugestedSinal, setSugestedSinal] = useState('');
+  const [showConcluirModal, setShowConcluirModal] = useState(false);
 
   const canEditFinancial = profile?.role === 'ADMIN' || profile?.role === 'GERENTE';
 
@@ -483,7 +484,14 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     <div className="flex flex-wrap gap-2">
                       {order.status === 'CONFIRMADO' && (
                         <button
-                          onClick={() => handleUpdateOrderField('status', 'ENTREGUE')}
+                          onClick={() => {
+                            const isQuitado = order.payment_status === 'QUITADO' || (order.balance_due ?? 0) <= 0.01;
+                            if (isQuitado) {
+                              handleUpdateOrderField('status', 'ENTREGUE');
+                            } else {
+                              setShowConcluirModal(true);
+                            }
+                          }}
                           disabled={isUpdatingStatus}
                           className="flex-1 min-w-[140px] px-4 py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 animate-pulse"
                         >
@@ -865,6 +873,143 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
             setRefreshKey(k => k + 1);
           }}
         />
+      )}
+
+      {showConcluirModal && order && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-3 mb-1">
+              <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+              <h3 className="text-base font-black text-gray-900 dark:text-white">Pedido com saldo pendente</h3>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1 ml-8">
+              Saldo devido:{' '}
+              <span className="font-black text-orange-600 dark:text-orange-400">
+                {(order.balance_due ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mb-5 ml-8">
+              Como o pagamento foi realizado, ou o saldo ficará para depois?
+            </p>
+
+            <div className="space-y-2 mb-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Pago agora — qual método?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'PIX', label: '📱 Pix', bg: 'bg-emerald-600 hover:bg-emerald-700' },
+                  { id: 'DEBITO', label: '💳 Débito', bg: 'bg-blue-600 hover:bg-blue-700' },
+                  { id: 'CREDITO', label: '💳 Crédito', bg: 'bg-indigo-600 hover:bg-indigo-700' },
+                  { id: 'DINHEIRO', label: '💵 Dinheiro', bg: 'bg-amber-600 hover:bg-amber-700' },
+                ].map((m) => (
+                  <button
+                    key={m.id}
+                    disabled={isUpdatingStatus}
+                    onClick={async () => {
+                      try {
+                        setIsUpdatingStatus(true);
+                        const { data: { session } } = await supabase.auth.getSession();
+                        const token = session?.access_token || '';
+                        if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+
+                        const response = await fetch('/api/payments', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                          },
+                          body: JSON.stringify({
+                            order_id: orderId,
+                            type: 'SALDO',
+                            method: m.id,
+                            valor: order.balance_due,
+                            notes: `Quitado na entrega via ${m.id}`
+                          })
+                        });
+                        if (!response.ok) {
+                          const err = await response.json();
+                          throw new Error(err.error || 'Erro ao registrar pagamento');
+                        }
+                        // Aguardar trigger atualizar payment_status, depois concluir
+                        await new Promise(r => setTimeout(r, 500));
+                        const { error } = await supabase
+                          .from('orders')
+                          .update({ status: 'ENTREGUE' })
+                          .eq('id', orderId);
+                        if (error) throw error;
+                        await supabase.from('order_changes').insert({
+                          order_id: orderId,
+                          changed_by: user?.id,
+                          field: 'status',
+                          old_value: order.status,
+                          new_value: 'ENTREGUE',
+                          reason: `Entrega concluída com pagamento de saldo via ${m.id}`
+                        });
+                        setShowConcluirModal(false);
+                        setRefreshKey(k => k + 1);
+                      } catch (err: any) {
+                        alert('Erro: ' + err.message);
+                      } finally {
+                        setIsUpdatingStatus(false);
+                      }
+                    }}
+                    className={`px-3 py-2.5 ${m.bg} text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 disabled:opacity-50`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-4 space-y-2">
+              <button
+                disabled={isUpdatingStatus}
+                onClick={async () => {
+                  try {
+                    setIsUpdatingStatus(true);
+                    const { error: ccErr } = await supabase
+                      .from('orders')
+                      .update({ payment_status: 'CONTA_CORRENTE', conta_corrente: true, status: 'ENTREGUE' } as any)
+                      .eq('id', orderId);
+                    if (ccErr) throw ccErr;
+                    await supabase.from('order_changes').insert([
+                      {
+                        order_id: orderId,
+                        changed_by: user?.id,
+                        field: 'payment_status',
+                        old_value: order.payment_status,
+                        new_value: 'CONTA_CORRENTE',
+                        reason: 'Saldo pendente enviado para Conta Corrente do cliente'
+                      },
+                      {
+                        order_id: orderId,
+                        changed_by: user?.id,
+                        field: 'status',
+                        old_value: order.status,
+                        new_value: 'ENTREGUE',
+                        reason: 'Entrega concluída com saldo enviado para Conta Corrente'
+                      }
+                    ]);
+                    setShowConcluirModal(false);
+                    setRefreshKey(k => k + 1);
+                  } catch (err: any) {
+                    alert('Erro: ' + err.message);
+                  } finally {
+                    setIsUpdatingStatus(false);
+                  }
+                }}
+                className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-purple-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <BookUser className="w-4 h-4" /> Lançar em Conta Corrente e Concluir
+              </button>
+              <button
+                onClick={() => setShowConcluirModal(false)}
+                className="w-full text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition py-1"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
