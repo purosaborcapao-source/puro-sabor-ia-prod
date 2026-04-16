@@ -61,7 +61,7 @@ async function handleUpdateUser(
   res: NextApiResponse<ResponseData>
 ) {
   try {
-    const { role, status, name, phone } = req.body
+    const { role, status, name, phone, password } = req.body
 
     // Validate role if provided
     const validRoles = ['ADMIN', 'GERENTE', 'PRODUTOR', 'ATENDENTE']
@@ -81,6 +81,20 @@ async function handleUpdateUser(
     if (status !== undefined) updateData.status = status
     if (name !== undefined) updateData.name = name
     if (phone !== undefined) updateData.phone = phone
+
+    // Handle password change via Supabase Auth Admin
+    if (password !== undefined) {
+      if (typeof password !== 'string' || password.length < 6) {
+        return res.status(400).json({ error: 'Senha deve ter pelo menos 6 caracteres' })
+      }
+      const { error: pwErr } = await supabaseServer.auth.admin.updateUserById(id, { password })
+      if (pwErr) {
+        return res.status(500).json({ error: `Falha ao atualizar senha: ${pwErr.message}` })
+      }
+      if (Object.keys(updateData).length === 0) {
+        return res.status(200).json({ success: true, message: 'Senha atualizada com sucesso' })
+      }
+    }
 
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' })
