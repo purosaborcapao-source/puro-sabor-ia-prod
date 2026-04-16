@@ -438,37 +438,63 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     — {order.delivery_type}
                   </p>
                 </div>
-                <div className="relative group">
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Status do Pedido</p>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={order.status}
-                      disabled={isUpdatingStatus}
-                      onChange={(e) => handleUpdateOrderField('status', e.target.value)}
-                      className={`px-3 py-1 rounded-full text-xs font-bold border outline-none transition-all cursor-pointer disabled:opacity-50 ${
-                        order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' : 
-                        order.status === 'CONFIRMADO' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                        order.status === 'CANCELADO' ? 'bg-red-100 text-red-800 border-red-200' :
-                        'bg-yellow-100 text-yellow-800 border-yellow-200'
-                      }`}
-                    >
-                      <option value="PENDENTE">🟡 PENDENTE</option>
-                      <option value="CONFIRMADO">🔵 CONFIRMADO</option>
-                      <option value="ENTREGUE">✅ ENTREGUE</option>
-                      <option value="CANCELADO">❌ CANCELADO</option>
-                    </select>
-                    {isUpdatingStatus && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {order.status === 'CONFIRMADO' && (
-                      <button
-                        onClick={() => handleUpdateOrderField('status', 'ENTREGUE')}
-                        disabled={isUpdatingStatus}
-                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-900/10 flex items-center gap-2"
+                <div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Status do Pedido</p>
+                  <div className="flex flex-col gap-3">
+                    {/* Status Badge Principal */}
+                    <div className="flex items-center gap-2">
+                       <span className={`px-4 py-1.5 rounded-full text-xs font-black border tracking-widest ${
+                         order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' : 
+                         order.status === 'CONFIRMADO' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                         order.status === 'CANCELADO' ? 'bg-red-100 text-red-800 border-red-200' :
+                         'bg-yellow-100 text-yellow-800 border-yellow-200'
+                       }`}>
+                         {order.status}
+                       </span>
+                       {isUpdatingStatus && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
+                    </div>
+
+                    {/* Botões de Ação */}
+                    <div className="flex flex-wrap gap-2">
+                      {order.status === 'CONFIRMADO' && (
+                        <button
+                          onClick={() => handleUpdateOrderField('status', 'ENTREGUE')}
+                          disabled={isUpdatingStatus}
+                          className="flex-1 min-w-[140px] px-4 py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-900/20 flex items-center justify-center gap-2 animate-pulse"
+                        >
+                          <CheckCircle2 className="w-4 h-4" /> Concluir Entrega
+                        </button>
+                      )}
+                      
+                      {order.status === 'PENDENTE' && (
+                        <button
+                          onClick={() => {
+                            const sugValue = (order.total * 0.3).toFixed(2);
+                            setSugestedSinal(sugValue);
+                            setShowConfirmModal(true);
+                          }}
+                          disabled={isUpdatingStatus}
+                          className="flex-1 min-w-[140px] px-4 py-3 bg-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2"
+                        >
+                          Confirmar Pedido
+                        </button>
+                      )}
+
+                      {/* Botão de mudar manual (dropdown simulado) */}
+                      <select
+                        value={order.status}
+                        onChange={(e) => handleUpdateOrderField('status', e.target.value)}
+                        className="px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-lg text-[10px] font-bold uppercase border-none outline-none cursor-pointer"
                       >
-                        <CheckCircle2 className="w-3 h-3" /> Concluir Entrega
-                      </button>
-                    )}
+                         <option value="">Alterar Status...</option>
+                         <option value="PENDENTE">🟡 PENDENTE</option>
+                         <option value="CONFIRMADO">🔵 CONFIRMADO</option>
+                         <option value="ENTREGUE">✅ ENTREGUE</option>
+                         <option value="CANCELADO">❌ CANCELADO</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
                     {order.status === 'PENDENTE' && (
                       <button
                         onClick={() => {
