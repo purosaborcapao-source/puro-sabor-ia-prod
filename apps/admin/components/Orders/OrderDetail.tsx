@@ -456,18 +456,29 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     </select>
                     {isUpdatingStatus && <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />}
                   </div>
-                  {order.status === 'PENDENTE' && (
-                    <button
-                      onClick={() => {
-                        const sugValue = (order.total * 0.3).toFixed(2);
-                        setSugestedSinal(sugValue);
-                        setShowConfirmModal(true);
-                      }}
-                      className="ml-2 px-3 py-1.5 bg-blue-600 shadow-sm text-white rounded text-xs font-bold hover:bg-blue-700 transition"
-                    >
-                      Confirmar Pedido (Z-API)
-                    </button>
-                  )}
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {order.status === 'CONFIRMADO' && (
+                      <button
+                        onClick={() => handleUpdateOrderField('status', 'ENTREGUE')}
+                        disabled={isUpdatingStatus}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-black uppercase tracking-widest hover:bg-green-700 transition-all shadow-lg shadow-green-900/10 flex items-center gap-2"
+                      >
+                        <CheckCircle2 className="w-3 h-3" /> Concluir Entrega
+                      </button>
+                    )}
+                    {order.status === 'PENDENTE' && (
+                      <button
+                        onClick={() => {
+                          const sugValue = (order.total * 0.3).toFixed(2);
+                          setSugestedSinal(sugValue);
+                          setShowConfirmModal(true);
+                        }}
+                        className="px-4 py-2 bg-blue-600 shadow-sm text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition"
+                      >
+                        Confirmar Pedido (Z-API)
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {/* Customer Observations */}
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
