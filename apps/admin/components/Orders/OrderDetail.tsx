@@ -109,6 +109,7 @@ export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
         id: orderData.id,
         number: orderData.number,
         customer_id: orderData.customer_id,
+        customer_obs: (orderData as any).customer_obs || '',
         customer_name: orderData.customers?.name || 'N/A',
         customer_phone: orderData.customers?.phone,
         delivery_date: orderData.delivery_date,
@@ -688,6 +689,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                 value={sugestedSinal}
                 onChange={(e) => setSugestedSinal(e.target.value.replace(/[^0-9,.]/g, ''))}
                 className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                placeholder="0,00"
               />
             </div>
             <div className="flex justify-end gap-3">

@@ -17,6 +17,7 @@ interface Order {
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE'
   order_number?: number
   has_ai_suggestion?: boolean
+  customer_obs?: string
 }
 
 interface OrderListProps {
@@ -55,6 +56,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
           delivery_date,
           total,
           status,
+          customer_obs,
           payment_status,
           customers:customer_id(id,name),
           order_items(id,product_id,quantity, products:product_id(name)),
@@ -118,6 +120,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
           status: order.status,
           payment_status: order.payment_status || 'SINAL_PENDENTE',
           order_number: order.order_number,
+          customer_obs: order.customer_obs || '',
           has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
         };
       })
@@ -232,7 +235,14 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
                 {order.customer_name}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                {order.product_name}
+                <div>
+                  <div className="font-medium text-gray-800 dark:text-gray-200">{order.product_name}</div>
+                  {order.customer_obs && (
+                    <div className="text-[11px] text-amber-600 dark:text-amber-500 italic mt-0.5 line-clamp-1" title={order.customer_obs}>
+                      Obs: {order.customer_obs}
+                    </div>
+                  )}
+                </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
                 {order.delivery_date ? new Date(order.delivery_date).toLocaleDateString('pt-BR') : 'N/A'}

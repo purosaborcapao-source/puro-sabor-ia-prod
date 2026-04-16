@@ -14,6 +14,7 @@ export interface OrderCompact {
   status: string;
   payment_status: 'SINAL_PENDENTE' | 'SINAL_PAGO' | 'QUITADO' | 'CONTA_CORRENTE';
   has_ai_suggestion?: boolean;
+  customer_obs?: string;
 }
 
 interface OrderCardProps {
@@ -68,9 +69,16 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban'
           {order.customer_name}
         </p>
         {viewMode === 'kanban' && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
-            {order.product_name || 'N/A'}
-          </p>
+          <>
+            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1 mt-0.5">
+              {order.product_name || 'N/A'}
+            </p>
+            {order.customer_obs && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium italic mt-1 line-clamp-2 bg-amber-50/50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-100/50 dark:border-amber-800/30">
+                "{order.customer_obs}"
+              </p>
+            )}
+          </>
         )}
       </div>
 

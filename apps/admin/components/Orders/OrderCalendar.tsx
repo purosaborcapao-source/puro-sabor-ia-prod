@@ -48,7 +48,7 @@ export const OrderCalendar = React.memo(function OrderCalendar({ filters = {} }:
       let query = supabase
         .from('orders')
         .select(`
-          id, number, order_number, customer_id, delivery_date, total, status, payment_status,
+          id, number, order_number, customer_id, delivery_date, total, status, payment_status, customer_obs,
           customers:customer_id(id, name),
           order_items(id,product_id,quantity, products:product_id(name)),
           order_changes(id, status, is_ai_suggestion)
@@ -82,6 +82,7 @@ export const OrderCalendar = React.memo(function OrderCalendar({ filters = {} }:
           total: order.total,
           status: order.status,
           payment_status: order.payment_status || 'SINAL_PENDENTE',
+          customer_obs: order.customer_obs || '',
           has_ai_suggestion: order.order_changes?.some((oc: any) => oc.is_ai_suggestion && oc.status === 'PENDENTE')
         };
       });
