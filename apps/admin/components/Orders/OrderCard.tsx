@@ -75,7 +75,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban'
             </p>
             {order.customer_obs && (
               <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium italic mt-1 line-clamp-2 bg-amber-50/50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded border border-amber-100/50 dark:border-amber-800/30">
-                "{order.customer_obs}"
+                &ldquo;{order.customer_obs}&rdquo;
               </p>
             )}
           </>

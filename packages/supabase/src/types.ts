@@ -246,7 +246,7 @@ export type Database = {
       }
       order_changes: {
         Row: {
-          changed_by: string
+          changed_by: string | null
           created_at: string
           field: string
           id: string
@@ -258,7 +258,7 @@ export type Database = {
           status: Database["public"]["Enums"]["order_change_status"] | null
         }
         Insert: {
-          changed_by: string
+          changed_by?: string
           created_at?: string
           field: string
           id?: string
@@ -277,7 +277,7 @@ export type Database = {
           is_ai_suggestion?: boolean | null
           new_value?: string | null
           old_value?: string | null
-          order_id: string
+          order_id?: string
           reason?: string | null
           status?: Database["public"]["Enums"]["order_change_status"] | null
         }
@@ -370,6 +370,8 @@ export type Database = {
           total_received: number
           balance_due: number
           customer_obs: string | null
+          debt_classification: string | null
+          debt_notes: string | null
         }
         Insert: {
           address?: string | null
@@ -397,6 +399,8 @@ export type Database = {
           total_received?: number
           balance_due?: number
           customer_obs?: string | null
+          debt_classification?: string | null
+          debt_notes?: string | null
         }
         Update: {
           address?: string | null
@@ -424,6 +428,8 @@ export type Database = {
           total_received?: number
           balance_due?: number
           customer_obs?: string | null
+          debt_classification?: string | null
+          debt_notes?: string | null
         }
         Relationships: [
           {

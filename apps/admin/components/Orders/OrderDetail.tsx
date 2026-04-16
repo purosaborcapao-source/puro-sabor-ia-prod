@@ -13,7 +13,7 @@ import { ProductCatalogDrawer } from './ProductCatalogDrawer';
 import { ReferenceImages } from './ReferenceImages';
 import { ChangeHistory } from './ChangeHistory';
 import { generatePixPayload, getPixQrCodeUrl } from '../../utils/pix';
-import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode, CreditCard, Clock, CheckCircle2, AlertTriangle, StickyNote } from 'lucide-react';
+import { AlertCircle, MessageCircle, LayoutGrid, Loader2, QrCode, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 interface OrderItem {
   quantity: number;
@@ -495,20 +495,6 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
                     </div>
                   </div>
                 </div>
-                    {order.status === 'PENDENTE' && (
-                      <button
-                        onClick={() => {
-                          const sugValue = (order.total * 0.3).toFixed(2);
-                          setSugestedSinal(sugValue);
-                          setShowConfirmModal(true);
-                        }}
-                        className="px-4 py-2 bg-blue-600 shadow-sm text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition"
-                      >
-                        Confirmar Pedido (Z-API)
-                      </button>
-                    )}
-                  </div>
-                </div>
                 {/* Customer Observations */}
                 <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                   <FieldWithPermission
@@ -581,7 +567,7 @@ Obrigado por escolher a Puro Sabor! Qualquer dúvida estou aqui.`;
 
                 </div>
 
-                {order.balance_due > 0 && (order as any).debt_classification && (
+                {(order.balance_due ?? 0) > 0 && (order as any).debt_classification && (
                   <div className="p-3 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg mt-4">
                     <div className="flex items-center gap-2 text-red-700 dark:text-red-400 mb-1">
                       <AlertTriangle className="w-4 h-4" />

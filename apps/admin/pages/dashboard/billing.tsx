@@ -4,8 +4,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { supabase } from '@atendimento-ia/supabase'
-import { ArrowLeftIcon, Search, Filter, AlertTriangle, MessageCircle, ChevronRight, DollarSign, Calendar, User, Loader2 } from 'lucide-react'
-import { PaymentStatusBadge } from '@/components/Orders/PaymentStatusBadge'
+import { ArrowLeftIcon, Search, Filter, AlertTriangle, MessageCircle, ChevronRight, DollarSign, Calendar, Loader2 } from 'lucide-react'
+
 
 interface OrderDebt {
   id: string
@@ -25,10 +25,10 @@ interface OrderDebt {
 
 export default function BillingPage() {
   const router = useRouter()
-  const { user, profile, loading } = useAuth()
+  const { user, loading } = useAuth()
   const [orders, setOrders] = useState<OrderDebt[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [selectedClassification, setSelectedClassification] = useState<string>('ALL')
 

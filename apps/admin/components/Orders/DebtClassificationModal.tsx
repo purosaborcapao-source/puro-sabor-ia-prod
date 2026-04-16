@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { X, AlertCircle, CreditCard, Clock, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@atendimento-ia/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
 
 interface DebtClassificationModalProps {
   orderId: string;
