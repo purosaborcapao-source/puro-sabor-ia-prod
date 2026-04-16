@@ -61,7 +61,7 @@ interface OrderDetailProps {
 }
 
 export function OrderDetail({ orderId, isCompact = false }: OrderDetailProps) {
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const { openCustomerId } = useChatPresence();
   const [order, setOrder] = useState<Order | null>(null);
   const [paymentEntries, setPaymentEntries] = useState<PaymentEntry[]>([]);
@@ -169,7 +169,10 @@ items: (orderData as any).order_items?.map((item: any) => ({
 
   const handleUpdateOrderField = async (field: keyof Order, value: any) => {
     // Interceptação para Status ENTREGUE
-    if (field === 'status' && value === 'ENTREGUE' && order && order.balance_due > 0) {
+    // Interceptação para Status ENTREGUE
+    const currentBalance = Number(order?.balance_due || 0);
+    if (field === 'status' && value === 'ENTREGUE' && currentBalance > 0.01) {
+      console.log('Interceptando para classificação de dívida:', currentBalance);
       setIsDebtModalOpen(true);
       return;
     }
