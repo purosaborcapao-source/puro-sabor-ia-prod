@@ -29,7 +29,8 @@ export function LoginForm() {
   // Redireciona para dashboard após login bem-sucedido ou caso o usuário abra e já possua profile carregado
   useEffect(() => {
     if (profile) {
-      if (profile.role === 'ADMIN' || profile.role === 'ATENDENTE') {
+      const allowed = ['ADMIN', 'GERENTE', 'ATENDENTE', 'PRODUTOR']
+      if (allowed.includes(profile.role)) {
         router.push('/dashboard')
       } else {
         setErrorMessage(
@@ -59,83 +60,100 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Painel Admin
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Faça login para continuar
+    <div className="min-h-screen flex bg-zinc-50 dark:bg-[#050505]">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex flex-col justify-between w-1/2 bg-zinc-900 dark:bg-[#0A0A0A] border-r border-zinc-800 p-12">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl grayscale opacity-80">🍞</span>
+          <span className="text-sm font-black tracking-widest text-zinc-50 uppercase">Puro Sabor IA</span>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold tracking-[0.3em] text-zinc-500 uppercase mb-3">Sistema Operacional</p>
+          <p className="text-zinc-400 text-sm leading-relaxed max-w-xs">
+            Central de pedidos, mensagens e produção para a operação da confeitaria.
           </p>
+        </div>
+        <p className="text-[10px] text-zinc-600 font-mono uppercase tracking-widest">
+          v2.0 — {new Date().getFullYear()}
+        </p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* Mobile logo */}
+        <div className="flex items-center gap-2 mb-10 lg:hidden">
+          <span className="text-xl grayscale opacity-70">🍞</span>
+          <span className="text-sm font-black tracking-widest text-zinc-900 dark:text-zinc-50 uppercase">Puro Sabor IA</span>
+        </div>
+
+        <div className="w-full max-w-sm">
+          <div className="mb-8">
+            <p className="text-[10px] font-bold tracking-[0.3em] text-zinc-400 uppercase mb-2">Acesso Restrito</p>
+            <h1 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">
+              Entrar no painel
+            </h1>
+          </div>
 
           {(errorMessage || error) && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <p className="text-red-800 dark:text-red-200 text-sm">
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <p className="text-red-800 dark:text-red-300 text-sm font-medium">
                 {errorMessage || error}
               </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">
                 Email
               </label>
               <input
                 type="email"
                 {...register('email')}
-                className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.email
-                    ? 'border-red-500'
-                    : 'border-gray-300 dark:border-gray-600'
+                className={`w-full px-4 py-3 border bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
+                  errors.email ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700'
                 }`}
-                placeholder="seu@email.com"
+                placeholder="operador@purosabor.com"
                 disabled={isSubmitting || loading}
+                autoComplete="email"
               />
               {errors.email && (
-                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+                <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.email.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mb-2">
                 Senha
               </label>
               <input
                 type="password"
                 {...register('password')}
-                className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.password
-                    ? 'border-red-500'
-                    : 'border-gray-300 dark:border-gray-600'
+                className={`w-full px-4 py-3 border bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
+                  errors.password ? 'border-red-500' : 'border-zinc-300 dark:border-zinc-700'
                 }`}
-                placeholder="Sua senha"
+                placeholder="••••••••"
                 disabled={isSubmitting || loading}
+                autoComplete="current-password"
               />
               {errors.password && (
-                <p className="text-red-500 text-sm mt-1">
-                  {errors.password.message}
-                </p>
+                <p className="text-red-500 text-xs mt-1.5 font-medium">{errors.password.message}</p>
               )}
             </div>
 
             <button
               type="submit"
               disabled={isSubmitting || loading}
-              className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full py-3 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 font-bold text-sm uppercase tracking-widest transition-colors disabled:opacity-40 disabled:cursor-not-allowed active:-translate-y-px mt-2"
             >
-              {isSubmitting || loading ? 'Carregando...' : 'Entrar'}
+              {isSubmitting || loading ? 'Autenticando...' : 'Entrar'}
             </button>
           </form>
 
-          <p className="text-center text-gray-600 dark:text-gray-400 text-sm mt-6">
-            Esqueceu sua senha?{' '}
-            <a
-              href="/auth/reset-password"
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Clique aqui
+          <p className="text-zinc-400 text-xs mt-8">
+            Esqueceu a senha?{' '}
+            <a href="/auth/reset-password" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+              Redefinir acesso
             </a>
           </p>
         </div>

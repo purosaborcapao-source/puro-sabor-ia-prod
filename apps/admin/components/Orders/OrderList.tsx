@@ -5,6 +5,18 @@ import { PaymentStatusBadge } from './PaymentStatusBadge'
 import { useAuth } from '@/contexts/AuthContext'
 import { ChevronRight, AlertCircle, Brain } from 'lucide-react'
 
+const STATUS_LABELS: Record<string, string> = {
+  NOVO: 'Novo',
+  PENDENTE: 'Pendente',
+  ACEITO: 'Aceito',
+  CONFIRMADO: 'Confirmado',
+  PREPARANDO: 'Preparando',
+  PRONTO: 'Pronto',
+  SAIU_ENTREGA: 'Saiu p/ Entrega',
+  ENTREGUE: 'Entregue',
+  CANCELADO: 'Cancelado',
+}
+
 interface Order {
   id: string
   number: string
@@ -261,7 +273,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <span
                   className={`px-3 py-1 rounded-full text-[11px] font-bold border ${
-                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' : 
+                    order.status === 'ENTREGUE' ? 'bg-green-100 text-green-800 border-green-200' :
                     order.status === 'CONFIRMADO' || order.status === 'ACEITO' ? 'bg-cyan-100 text-cyan-800 border-cyan-200' :
                     order.status === 'PREPARANDO' ? 'bg-purple-100 text-purple-800 border-purple-200' :
                     order.status === 'PRONTO' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' :
@@ -270,7 +282,7 @@ export const OrderList = React.memo(function OrderList({ filters = {} }: OrderLi
                     'bg-blue-100 text-blue-800 border-blue-200'
                   }`}
                 >
-                  {order.status}
+                  {STATUS_LABELS[order.status] ?? order.status}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">

@@ -7,11 +7,12 @@ import { OrderCalendar } from '@/components/Orders/OrderCalendar'
 import { OrderFilters } from '@/components/Orders/OrderFilters'
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { ArrowLeftIcon, Plus, LayoutList, Kanban, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus, LayoutList, GitBranch, Calendar as CalendarIcon } from 'lucide-react'
 
 export default function OrdersPage() {
   const router = useRouter()
   const { user, profile, loading } = useAuth()
+  const [filtersReady, setFiltersReady] = useState(false)
   const [filters, setFilters] = useState({
     status: null as string | null,
     paymentStatus: null as string | null,
@@ -20,22 +21,42 @@ export default function OrdersPage() {
   })
   const [viewMode, setViewMode] = useState<"list" | "timeline" | "calendar">("timeline")
 
-  // Callbacks para filtros - nunca recreadas
+  // Lê query params na primeira montagem
+  useEffect(() => {
+    if (!router.isReady) return
+    setFilters({
+      status: (router.query.status as string) || null,
+      paymentStatus: (router.query.paymentStatus as string) || null,
+      date: (router.query.date as string) || null,
+      search: (router.query.search as string) || '',
+    })
+    setFiltersReady(true)
+  }, [router.isReady])
+
+  const pushFilters = useCallback((next: typeof filters) => {
+    const query: Record<string, string> = {}
+    if (next.status) query.status = next.status
+    if (next.paymentStatus) query.paymentStatus = next.paymentStatus
+    if (next.date) query.date = next.date
+    if (next.search) query.search = next.search
+    router.replace({ pathname: router.pathname, query }, undefined, { shallow: true })
+  }, [router])
+
   const handleStatusChange = useCallback((status: string | null) => {
-    setFilters((prev) => ({ ...prev, status }))
-  }, [])
+    setFilters((prev) => { const next = { ...prev, status }; pushFilters(next); return next })
+  }, [pushFilters])
 
   const handlePaymentStatusChange = useCallback((paymentStatus: string | null) => {
-    setFilters((prev) => ({ ...prev, paymentStatus }))
-  }, [])
+    setFilters((prev) => { const next = { ...prev, paymentStatus }; pushFilters(next); return next })
+  }, [pushFilters])
 
   const handleDateChange = useCallback((date: string | null) => {
-    setFilters((prev) => ({ ...prev, date }))
-  }, [])
+    setFilters((prev) => { const next = { ...prev, date }; pushFilters(next); return next })
+  }, [pushFilters])
 
   const handleSearchChange = useCallback((search: string) => {
-    setFilters((prev) => ({ ...prev, search }))
-  }, [])
+    setFilters((prev) => { const next = { ...prev, search }; pushFilters(next); return next })
+  }, [pushFilters])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -66,13 +87,6 @@ export default function OrdersPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Link
-                  href="/dashboard"
-                  className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Voltar"
-                >
-                  <ArrowLeftIcon className="w-5 h-5" />
-                </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     📦 Pedidos
@@ -127,7 +141,7 @@ export default function OrdersPage() {
                    onClick={() => setViewMode('timeline')}
                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === 'timeline' ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                 >
-                  <Kanban className="w-4 h-4" /> Timeline
+                  <GitBranch className="w-4 h-4" /> Timeline
                 </button>
                 <button
                    onClick={() => setViewMode('calendar')}
@@ -145,9 +159,9 @@ export default function OrdersPage() {
             </div>
             
             <div className={`overflow-hidden ${viewMode !== 'list' ? 'p-4' : ''}`}>
-              {viewMode === 'list' && <OrderList filters={filters} />}
-              {viewMode === 'timeline' && <OrderTimeline filters={filters} />}
-              {viewMode === 'calendar' && <OrderCalendar filters={filters} />}
+              {filtersReady && viewMode === 'list' && <OrderList filters={filters} />}
+              {filtersReady && viewMode === 'timeline' && <OrderTimeline filters={filters} />}
+              {filtersReady && viewMode === 'calendar' && <OrderCalendar filters={filters} />}
             </div>
           </div>
         </main>

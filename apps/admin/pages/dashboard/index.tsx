@@ -29,7 +29,8 @@ export default function DashboardPage() {
     }
 
     if (!loading && user && profile) {
-      if (profile.role !== 'ADMIN' && profile.role !== 'GERENTE' && profile.role !== 'ATENDENTE') {
+      const allowedRoles = ['ADMIN', 'GERENTE', 'ATENDENTE', 'PRODUTOR']
+      if (!allowedRoles.includes(profile.role)) {
         router.push('/auth/login')
       }
     }
@@ -72,12 +73,24 @@ export default function DashboardPage() {
 
       // Atualizar pendências (apenas as que têm query válida)
       const updatedPendencias = basePendencias.map((p) => {
-        if (p.type === 'mensagens') return { ...p, count: newConversas?.length || 0 }
-        if (p.type === 'pedidos') return { ...p, count: pedidosPendentes?.length || 0 }
-        if (p.type === 'alteracoes') return { ...p, count: changesData?.length || 0 }
-        if (p.type === 'problemas') return { 
-          ...p, 
-          count: pedidosInadimplentes?.length || 0, 
+        if (p.type === 'mensagens') return {
+          ...p,
+          count: newConversas?.length || 0,
+          onViewAll: () => router.push('/dashboard/messages')
+        }
+        if (p.type === 'pedidos') return {
+          ...p,
+          count: pedidosPendentes?.length || 0,
+          onViewAll: () => router.push('/dashboard/orders?status=PENDENTE')
+        }
+        if (p.type === 'alteracoes') return {
+          ...p,
+          count: changesData?.length || 0,
+          onViewAll: () => router.push('/dashboard/orders')
+        }
+        if (p.type === 'problemas') return {
+          ...p,
+          count: pedidosInadimplentes?.length || 0,
           label: 'Pendências Fin.',
           onViewAll: () => router.push('/dashboard/billing')
         }
@@ -246,10 +259,10 @@ export default function DashboardPage() {
 
               <Link
                 href="/dashboard/billing"
-                className="p-4 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 hover:border-red-500 dark:hover:border-red-500 flex items-center justify-between group transition-all shadow-sm"
+                className="p-4 bg-white dark:bg-[#0A0A0A] border border-gray-200 dark:border-gray-800 hover:border-orange-500 dark:hover:border-orange-500 flex items-center justify-between group transition-all shadow-sm"
               >
-                <div className="text-gray-900 dark:text-white uppercase font-black tracking-wider text-xs text-emerald-600 dark:text-emerald-500">/COBRANCA</div>
-                <div className="text-gray-300 dark:text-gray-600 group-hover:text-emerald-500 font-bold">→</div>
+                <div className="text-orange-600 dark:text-orange-500 uppercase font-black tracking-wider text-xs">/COBRANÇAS</div>
+                <div className="text-gray-300 dark:text-gray-600 group-hover:text-orange-500 font-bold">→</div>
               </Link>
             </div>
           </section>

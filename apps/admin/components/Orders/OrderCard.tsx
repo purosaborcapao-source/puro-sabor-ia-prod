@@ -25,17 +25,18 @@ interface OrderCardProps {
 export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban' }) => {
   const { profile } = useAuth();
   
-  const statusColors: Record<string, string> = {
-    'NOVO': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-    'ACEITO': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800',
-    'PREPARANDO': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800',
-    'PRONTO': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-    'SAIU_ENTREGA': 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-    'ENTREGUE': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800',
-    'CANCELADO': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800'
-  };
+  const statusConfig: Record<string, { label: string; cls: string }> = {
+    'NOVO':         { label: 'Novo',           cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800' },
+    'PENDENTE':     { label: 'Pendente',        cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800' },
+    'ACEITO':       { label: 'Aceito',          cls: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800' },
+    'PREPARANDO':   { label: 'Preparando',      cls: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' },
+    'PRONTO':       { label: 'Pronto',          cls: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
+    'SAIU_ENTREGA': { label: 'Saiu p/ Entrega', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800' },
+    'ENTREGUE':     { label: 'Entregue',        cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' },
+    'CANCELADO':    { label: 'Cancelado',       cls: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-red-200 dark:border-red-800' },
+  }
 
-  const getStatusColor = (status: string) => statusColors[status] || 'bg-gray-100 text-gray-800 border-gray-200';
+  const getStatusConfig = (status: string) => statusConfig[status] || { label: status, cls: 'bg-gray-100 text-gray-800 border-gray-200' }
 
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const dateObj = new Date(order.delivery_date || 0);
@@ -98,8 +99,8 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, viewMode = 'kanban'
            </div>
          ) : <div />}
          
-         <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusColor(order.status)}`}>
-           {order.status}
+         <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusConfig(order.status).cls}`}>
+           {getStatusConfig(order.status).label}
          </div>
       </div>
     </Link>

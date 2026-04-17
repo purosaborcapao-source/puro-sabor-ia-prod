@@ -60,7 +60,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <Sidebar />
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-20 overflow-y-auto">
+      <main className="flex-1 md:ml-52 overflow-y-auto">
         {/* Top padding for mobile */}
         <div className="md:hidden h-16" />
 
