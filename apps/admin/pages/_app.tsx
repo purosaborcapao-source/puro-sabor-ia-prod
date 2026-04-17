@@ -1,15 +1,26 @@
 import type { AppProps } from 'next/app'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
+import localFont from 'next/font/local'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ChatPresenceProvider } from '@/contexts/ChatPresenceContext'
 import { DashboardLayout } from '@/components/Layout'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import '../styles/globals.css'
 
+const geistSans = localFont({
+  src: '../public/fonts/GeistSans.woff2',
+  variable: '--font-geist-sans',
+  weight: '100 900',
+})
+
+const geistMono = localFont({
+  src: '../public/fonts/GeistMono.woff2',
+  variable: '--font-geist-mono',
+  weight: '100 900',
+})
+
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <div className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <div className={`${geistSans.variable} ${geistMono.variable}`}>
       <ErrorBoundary>
         <AuthProvider>
           <ChatPresenceProvider>
