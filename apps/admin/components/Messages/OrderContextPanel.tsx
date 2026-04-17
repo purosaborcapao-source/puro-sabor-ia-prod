@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { ShoppingBag, Plus, Save } from "lucide-react";
 import { OrderDetail } from "../Orders/OrderDetail";
+import { InlineOrderForm } from "../Orders/InlineOrderForm";
 
 interface OrderContextPanelProps {
   customerId: string;
@@ -12,6 +12,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   customerId,
 }) => {
   const [activeTab, setActiveTab] = useState<"order" | "history" | "management">("order");
+  const [isCreating, setIsCreating] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   
@@ -24,12 +25,107 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
   const [savingNotes, setSavingNotes] = useState(false);
   const [convStatus, setConvStatus] = useState<"NEW" | "IN_PROGRESS" | "WAITING_ORDER" | "RESOLVED" | null>(null);
 
+  // Carrega apenas pedidos (leve — não reseta selectedOrderId se já existe um válido)
+  const loadOrders = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(`*, customers:customer_id(name)`)
+        .eq("customer_id", customerId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      const fetchedOrders = data || [];
+      setOrders(fetchedOrders);
+
+      // Seleciona automaticamente só se não houver seleção atual válida
+      setSelectedOrderId((prev) => {
+        const stillExists = prev && fetchedOrders.find((o) => o.id === prev);
+        if (stillExists) return prev; // mantém seleção atual
+
+        const activeOrder = fetchedOrders.find(
+          (o) => o.status === "PENDENTE" || o.status === "CONFIRMADO"
+        );
+        if (activeOrder) {
+          setActiveTab("order");
+          return activeOrder.id;
+        }
+        if (fetchedOrders.length > 0) {
+          setActiveTab("order");
+          return fetchedOrders[0].id;
+        }
+        return null;
+      });
+    } catch (err) {
+      console.error("Erro ao carregar pedidos:", err);
+    }
+  }, [customerId]);
+
+  // Carga completa inicial (pedidos + dados do cliente + conversa)
+  const loadAll = useCallback(async () => {
+    try {
+      const [ordersRes, customerRes, convRes] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(`*, customers:customer_id(name)`)
+          .eq("customer_id", customerId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("customers")
+          .select("name, notes, phone, created_at")
+          .eq("id", customerId)
+          .single(),
+        supabase
+          .from("conversations")
+          .select("status, internal_notes")
+          .eq("customer_id", customerId)
+          .single(),
+      ]);
+
+      const fetchedOrders = ordersRes.data || [];
+      setOrders(fetchedOrders);
+
+      const activeOrder = fetchedOrders.find(
+        (o) => o.status === "PENDENTE" || o.status === "CONFIRMADO"
+      );
+      if (activeOrder) {
+        setSelectedOrderId(activeOrder.id);
+        setActiveTab("order");
+      } else if (fetchedOrders.length > 0) {
+        setSelectedOrderId(fetchedOrders[0].id);
+        setActiveTab("order");
+      } else {
+        setActiveTab("management");
+      }
+
+      if (customerRes.data) {
+        setCustomerName(customerRes.data.name || "");
+        setCustomerNotes(customerRes.data.notes || "Sem instruções gerais do cliente.");
+        setCustomerPhone(customerRes.data.phone);
+        setCustomerSince(
+          customerRes.data.created_at
+            ? new Date(customerRes.data.created_at).toLocaleDateString("pt-BR", {
+                month: "short",
+                year: "numeric",
+              })
+            : "N/A"
+        );
+      }
+
+      if (convRes.data) {
+        setConvStatus(convRes.data.status);
+        setInternalNotes(convRes.data.internal_notes || "");
+      }
+    } catch (err) {
+      console.error("Erro ao carregar contexto:", err);
+    }
+  }, [customerId]);
+
   useEffect(() => {
     if (!customerId) return;
 
-    loadCustomerOrders();
+    loadAll();
 
-    // Listeners Realtime para Pedidos e Conversas deste cliente específico
     const subOrders = supabase
       .channel(`orders:panel:${customerId}`)
       .on(
@@ -40,7 +136,7 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
           table: "orders",
           filter: `customer_id=eq.${customerId}`,
         },
-        () => loadCustomerOrders()
+        () => loadOrders()
       )
       .subscribe();
 
@@ -55,13 +151,9 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
           filter: `customer_id=eq.${customerId}`,
         },
         (payload: any) => {
-          // Atualiza status e notas internas (apenas se não estivermos salvando)
-          if (payload.new) {
-            setConvStatus(payload.new.status);
-            // Evita sobrescrever se o usuário estiver editando notas (opcional, mas seguro)
-            // Aqui vamos apenas recarregar os dados para garantir consistência
-            loadCustomerOrders();
-          }
+          if (!payload.new) return;
+          setConvStatus(payload.new.status);
+          if (!savingNotes) setInternalNotes(payload.new.internal_notes || "");
         }
       )
       .subscribe();
@@ -72,66 +164,6 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customerId]);
-
-  const loadCustomerOrders = async () => {
-    try {
-      setSelectedOrderId(null);
-      setOrders([]);
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          customers:customer_id(name)
-        `)
-        .eq("customer_id", customerId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      const fetchedOrders = data || [];
-      setOrders(fetchedOrders);
-
-      // Auto-selecionar pedido ativo (Pendente ou Confirmado)
-      const activeOrder = fetchedOrders.find(o => o.status === 'PENDENTE' || o.status === 'CONFIRMADO');
-      if (activeOrder) {
-        setSelectedOrderId(activeOrder.id);
-        setActiveTab("order");
-      } else if (fetchedOrders.length > 0) {
-        setSelectedOrderId(fetchedOrders[0].id);
-        setActiveTab("order");
-      } else {
-        setActiveTab("management");
-      }
-
-      // Buscar clientes e notas
-      const { data: customerData } = await supabase
-        .from("customers")
-        .select("name, notes, phone, created_at")
-        .eq("id", customerId)
-        .single();
-        
-      if (customerData) {
-        setCustomerName(customerData.name || "");
-        setCustomerNotes(customerData.notes || "Sem instruções gerais do cliente.");
-        setCustomerPhone(customerData.phone);
-        setCustomerSince(customerData.created_at ? new Date(customerData.created_at).toLocaleDateString("pt-BR", { month: 'short', year: 'numeric' }) : 'N/A');
-      }
-
-      // Buscar conversa
-      const { data: convData } = await supabase
-        .from("conversations")
-        .select("status, internal_notes")
-        .eq("customer_id", customerId)
-        .single();
-
-      if (convData) {
-        setConvStatus(convData.status);
-        setInternalNotes(convData.internal_notes || "");
-      }
-    } catch (err) {
-      console.error("Erro ao carregar detalhes do contexto:", err);
-    } finally {
-    }
-  };
   const handleSaveInternalNotes = async () => {
       try {
         setSavingNotes(true);
@@ -166,8 +198,27 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
     );
   }
 
+  // Quando pedido é criado com sucesso: seleciona e sai do modo criação
+  const handleOrderCreated = (orderId: string) => {
+    setIsCreating(false);
+    setSelectedOrderId(orderId);
+    setActiveTab("order");
+    loadOrders();
+  };
+
   return (
     <div className="h-full flex flex-col bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      {/* Modo Criar Pedido — substitui todo o painel */}
+      {isCreating ? (
+        <InlineOrderForm
+          customerId={customerId}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          onSuccess={handleOrderCreated}
+          onCancel={() => setIsCreating(false)}
+        />
+      ) : (
+      <>
       {/* Tabs */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <button
@@ -200,6 +251,14 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
         >
           Lead
         </button>
+        {/* Botão "+ Pedido" sempre visível */}
+        <button
+          onClick={() => setIsCreating(true)}
+          title="Criar novo pedido"
+          className="px-3 py-3 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border-b-2 border-transparent"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Content */}
@@ -207,18 +266,27 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
         {activeTab === "order" ? (
           <div className="space-y-4">
             {selectedOrderId ? (
-              <OrderDetail key={selectedOrderId} orderId={selectedOrderId} isCompact={true} />
+              <>
+                <OrderDetail key={selectedOrderId} orderId={selectedOrderId} isCompact={true} />
+                <button
+                  onClick={() => setIsCreating(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Criar Novo Pedido
+                </button>
+              </>
             ) : (
               <div className="text-center py-12">
                 <ShoppingBag className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p className="text-gray-500 mb-4">Nenhum pedido ativo para este cliente.</p>
-                <Link 
-                  href={`/dashboard/orders/new?customer_id=${customerId}&name=${encodeURIComponent(customerName)}&phone=${encodeURIComponent(customerPhone)}`}
+                <button
+                  onClick={() => setIsCreating(true)}
                   className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                 >
                   <Plus className="w-5 h-5" />
                   Criar Pedido Agora
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -342,6 +410,8 @@ export const OrderContextPanel: React.FC<OrderContextPanelProps> = ({
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 };

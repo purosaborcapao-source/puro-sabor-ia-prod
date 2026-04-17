@@ -2,8 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@atendimento-ia/supabase";
 import { MessageReplyForm } from "./MessageReplyForm";
 import { MessageBubble } from "./MessageBubble";
-import { AlertCircle, Ban, ShoppingCart, WifiOff } from "lucide-react";
-import { useRouter } from "next/router";
+import { AlertCircle, Ban, WifiOff } from "lucide-react";
 import { ConversationStatusBadge, ConversationStatus } from "./ConversationStatusBadge";
 import { SLATimer } from "./SLATimer";
 import { useChatPresence } from "@/contexts/ChatPresenceContext";
@@ -40,7 +39,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
   const realtimeDisconnected = false;
   const handleRealtimeStatus = (_status: string) => {};
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const isFirstLoadRef = useRef(true);
 
   // Refs para controlar auto-assignment e bloquear realtime durante write
@@ -193,14 +191,40 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "messages",
           filter: `customer_id=eq.${customerId}`,
         },
-        () => {
-          // Bloqueia realtime durante auto-assignment para evitar cascata
-          if (!cancelled && !isAutoAssigningRef.current) loadMessages();
+        (payload) => {
+          if (cancelled || isAutoAssigningRef.current) return;
+          const msg = payload.new as Message;
+          if (!msg?.id) return;
+          // Adiciona incrementalmente sem recarregar tudo
+          setMessages((prev) =>
+            prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]
+          );
+          setTimeout(
+            () => messagesEndRef.current?.scrollIntoView({ block: "end" }),
+            80
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "messages",
+          filter: `customer_id=eq.${customerId}`,
+        },
+        (payload) => {
+          if (cancelled) return;
+          const msg = payload.new as Message;
+          if (!msg?.id) return;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === msg.id ? { ...m, ...msg } : m))
+          );
         }
       )
       .subscribe(handleRealtimeStatus);
@@ -215,9 +239,13 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
           table: "conversations",
           filter: `customer_id=eq.${customerId}`,
         },
-        () => {
-          // Bloqueia realtime durante auto-assignment para evitar cascata
-          if (!cancelled && !isAutoAssigningRef.current) loadMessages();
+        (payload) => {
+          if (cancelled || isAutoAssigningRef.current) return;
+          if (!payload.new) return;
+          const conv = payload.new as any;
+          setConvStatus(conv.status as ConversationStatus);
+          setLastInboundAt(conv.last_inbound_at ?? null);
+          setIsBlocked(conv.is_blocked ?? false);
         }
       )
       .subscribe(handleRealtimeStatus);
@@ -433,15 +461,6 @@ export const MessageThread: React.FC<MessageThreadProps> = ({ customerId }) => {
             <Ban className="w-4 h-4" />
           </button>
           
-          <button
-            onClick={() => {
-              router.push(`/dashboard/orders/new?customer_id=${customerId}&name=${encodeURIComponent(customerName)}&phone=${customerPhone || ''}`);
-            }}
-            className="flex items-center gap-2 px-3 py-2 bg-[var(--primary-paprica)] hover:bg-orange-600 text-white rounded-lg font-semibold text-sm transition-colors shadow-sm"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span className="hidden sm:inline">Criar Pedido</span>
-          </button>
         </div>
       </div>
 
