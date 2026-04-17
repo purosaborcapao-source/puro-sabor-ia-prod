@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useAuth } from '@/contexts/AuthContext'
 import { Sidebar } from './Sidebar'
@@ -10,8 +10,23 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   const isAuthPage = router.pathname.startsWith('/auth/')
+
+  // Lê preferência do localStorage após montar (evita hydration mismatch)
+  useEffect(() => {
+    const saved = localStorage.getItem('sidebar-collapsed')
+    if (saved === 'true') setCollapsed(true)
+    setMounted(true)
+  }, [])
+
+  const handleToggle = () => {
+    const next = !collapsed
+    setCollapsed(next)
+    localStorage.setItem('sidebar-collapsed', String(next))
+  }
 
   useEffect(() => {
     if (!loading && !user && !isAuthPage) {
@@ -19,13 +34,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     }
   }, [loading, user, isAuthPage, router])
 
-  // Se for página de autenticação (Login), renderiza o conteúdo puro
   if (isAuthPage) {
     return <>{children}</>
   }
 
-
-  // Enquanto o login inicial acontece, mostramos um loader sutil e premium
   if (loading && !user) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950">
@@ -48,23 +60,23 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     )
   }
 
-  // Se já temos o usuário (sessão), renderizamos a estrutura (Sidebar + Main)
-  // O perfil pode carregar em background.
-  if (!user) {
-    return null
-  }
+  if (!user) return null
 
   return (
     <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 font-sans">
-      {/* Sidebar */}
-      <Sidebar />
+      <Sidebar collapsed={collapsed} onToggle={handleToggle} />
 
-      {/* Main Content */}
-      <main className="flex-1 md:ml-52 overflow-y-auto">
-        {/* Top padding for mobile */}
+      <main
+        className={`flex-1 overflow-y-auto transition-all duration-200 ${
+          // Só aplica margem após montar para evitar flash
+          mounted
+            ? collapsed
+              ? 'md:ml-16'
+              : 'md:ml-52'
+            : 'md:ml-52'
+        }`}
+      >
         <div className="md:hidden h-16" />
-
-        {/* Content */}
         {children}
       </main>
     </div>

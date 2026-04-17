@@ -4,7 +4,7 @@ import { MessageThread } from "./MessageThread";
 import { MessageListItem } from "./MessageListItem";
 import { OrderContextPanel } from "./OrderContextPanel";
 import { ConversationKanban } from "./ConversationKanban";
-import { AlertCircle, MessageSquare, RefreshCw, Search, LayoutList, Kanban, WifiOff } from "lucide-react";
+import { AlertCircle, RefreshCw, Search, LayoutList, Kanban, WifiOff, MessageSquareDot } from "lucide-react";
 
 interface MessageChat {
   customer_id: string;
@@ -338,125 +338,134 @@ export const MessageInbox = React.memo(function MessageInbox() {
     );
   }
 
+  const filters = [
+    { label: "Novas",       value: "NEW",           dot: "bg-amber-400",   activeText: "text-amber-700 dark:text-amber-300" },
+    { label: "Atendimento", value: "IN_PROGRESS",   dot: "bg-blue-500",    activeText: "text-blue-700 dark:text-blue-300" },
+    { label: "Ag. Pedido",  value: "WAITING_ORDER", dot: "bg-orange-400",  activeText: "text-orange-700 dark:text-orange-300" },
+    { label: "Resolvidos",  value: "RESOLVED",      dot: "bg-zinc-400",    activeText: "text-zinc-600 dark:text-zinc-300" },
+    { label: "Todos",       value: "ALL",            dot: "bg-zinc-300",    activeText: "text-zinc-600 dark:text-zinc-300" },
+  ] as const
+
+  const counts = {
+    NEW:           chats.filter(c => c.status === "NEW").length,
+    IN_PROGRESS:   chats.filter(c => c.status === "IN_PROGRESS").length,
+    WAITING_ORDER: chats.filter(c => c.status === "WAITING_ORDER").length,
+    RESOLVED:      chats.filter(c => c.status === "RESOLVED").length,
+    ALL:           chats.length,
+  }
+
   // ── Visão Kanban ──────────────────────────────────────────────────────────
   if (viewMode === "kanban") {
     return (
-      <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-        {/* Sidebar mínima no Kanban: ícones de toggle */}
-        <div className="w-14 shrink-0 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col items-center pt-4 gap-3">
+      <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950">
+        <div className="w-12 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col items-center pt-3 gap-2">
           <button
             onClick={() => setViewMode("list")}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
             title="Voltar para Lista"
           >
-            <LayoutList className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <LayoutList className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           </button>
           <button
             onClick={loadChats}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
             title="Atualizar"
           >
-            <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            <RefreshCw className="w-4 h-4 text-zinc-400" />
           </button>
         </div>
         <ConversationKanban />
       </div>
-    );
+    )
   }
 
-  // ── Visão Lista (padrão) ───────────────────────────────────────────────────
+  // ── Visão Lista ────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-      {/* Sidebar com lista de chats */}
-      <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col">
-        {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Mensagens
-              {realtimeDisconnected && (
-                <span
-                  title="Conexão em tempo real perdida — mensagens podem não atualizar automaticamente"
-                  className="flex items-center gap-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 text-[10px] rounded-full font-semibold border border-yellow-200"
-                >
-                  <WifiOff className="w-3 h-3" /> Offline
-                </span>
-              )}
-            </h2>
-            <div className="flex items-center gap-1">
-              {/* Toggle: Lista / Kanban */}
-              <button
-                onClick={() => setViewMode(viewMode === "list" ? "kanban" : "list")}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title={viewMode === "list" ? "Alternar para Kanban" : "Alternar para Lista"}
-              >
-                {viewMode === "list" ? (
-                  <Kanban className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                ) : (
-                  <LayoutList className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                )}
-              </button>
-              <button
-                onClick={loadChats}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                title="Atualizar"
-              >
-                <RefreshCw className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-              </button>
+    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+
+      {/* ── Painel esquerdo: lista de conversas ── */}
+      <div className="w-72 shrink-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-col">
+
+        {/* Topo: busca + ações */}
+        <div className="p-3 border-b border-zinc-100 dark:border-zinc-800">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Buscar cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 text-sm bg-zinc-100 dark:bg-zinc-800 border-0 rounded-lg text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
+            <button
+              onClick={() => setViewMode("kanban")}
+              title="Visualização Kanban"
+              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
+            >
+              <Kanban className="w-4 h-4 text-zinc-400" />
+            </button>
+            <button
+              onClick={loadChats}
+              title="Atualizar"
+              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
+            </button>
+            {realtimeDisconnected && (
+              <span title="Realtime desconectado" className="shrink-0">
+                <WifiOff className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              </span>
+            )}
           </div>
 
-          {/* Busca por Nome */}
-          <div className="mb-4 relative">
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Buscar por nome do cliente..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Filtros de Status */}
-          <div className="flex gap-1 overflow-x-auto pb-2 hide-scrollbar">
-            {[
-              { label: "Novas", value: "NEW", icon: "📬" },
-              { label: "Em Atend.", value: "IN_PROGRESS", icon: "💬" },
-              { label: "Ag. Pedido", value: "WAITING_ORDER", icon: "📋" },
-              { label: "Resolvidos", value: "RESOLVED", icon: "✅" },
-              { label: "Todos", value: "ALL", icon: "📂" },
-            ].map((f) => (
-              <button
-                key={f.value}
-                onClick={() => setFilter(f.value as typeof filter)}
-                className={`px-3 py-1.5 text-xs whitespace-nowrap rounded-lg transition-colors ${
-                  filter === f.value
-                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium"
-                    : "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {f.icon} {f.label}
-                {f.value !== "ALL" && f.value !== "RESOLVED" && chats.filter(c => c.status === f.value).length > 0 && (
-                  <span className="ml-1 bg-blue-200 dark:bg-blue-800 px-1.5 py-0.5 rounded-full text-[10px]">
-                    {chats.filter(c => c.status === f.value).length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          {/* Filtros verticais */}
+          <nav className="space-y-0.5">
+            {filters.map((f) => {
+              const count = counts[f.value]
+              const isActive = filter === f.value
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setFilter(f.value as typeof filter)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
+                    isActive
+                      ? 'bg-zinc-100 dark:bg-zinc-800'
+                      : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${f.dot}`} />
+                    <span className={`font-medium ${isActive ? f.activeText : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      {f.label}
+                    </span>
+                  </div>
+                  {count > 0 && (
+                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
+                      isActive
+                        ? 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-200'
+                        : 'text-zinc-400 dark:text-zinc-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
         </div>
 
-        {/* Lista de chats */}
+        {/* Lista */}
         <div className="flex-1 overflow-y-auto">
           {filteredChats.length === 0 ? (
-            <div className="p-4 text-center text-gray-600 dark:text-gray-400">
-              {filter === "NEW" 
-                ? "Nenhuma mensagem nova" 
-                : filter === "IN_PROGRESS"
-                ? "Nenhum atendimento em andamento"
-                : "Nenhuma conversa encontrada"}
+            <div className="flex flex-col items-center justify-center h-32 gap-2 px-6 text-center">
+              <p className="text-sm font-medium text-zinc-400 dark:text-zinc-500">
+                {filter === "NEW" ? "Nenhuma mensagem nova" :
+                 filter === "IN_PROGRESS" ? "Nenhum atendimento ativo" :
+                 filter === "WAITING_ORDER" ? "Nenhuma aguardando pedido" :
+                 "Sem conversas"}
+              </p>
             </div>
           ) : (
             filteredChats.map((chat) => (
@@ -471,21 +480,27 @@ export const MessageInbox = React.memo(function MessageInbox() {
         </div>
       </div>
 
-      {/* Thread de mensagens */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* ── Thread central ── */}
+      <div className="flex-1 flex flex-col min-w-0 bg-zinc-50 dark:bg-zinc-950">
         {selectedCustomerId ? (
           <MessageThread customerId={selectedCustomerId} />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-600 dark:text-gray-400">
-            <p>Selecione uma conversa</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+              <MessageSquareDot className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Nenhuma conversa selecionada</p>
+              <p className="text-xs text-zinc-400 dark:text-zinc-600 mt-1">Escolha uma conversa no painel ao lado</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Painel de Contexto do Pedido (Lado Direito) */}
-      <div className="w-96 border-l border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 hidden lg:block">
+      {/* ── Painel de contexto ── */}
+      <div className="w-80 shrink-0 border-l border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hidden lg:block">
         <OrderContextPanel customerId={selectedCustomerId || ""} />
       </div>
     </div>
-  );
+  )
 });
